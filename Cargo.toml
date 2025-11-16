@@ -1,0 +1,14 @@
+[package]
+name = "okx"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+tokio = { version = "1.48.0", features = ["full"] }
+futures = "0.3.31"
+tokio-tungstenite = {version = "0.28.0", features = ["native-tls"]}
+url = "2.5.7"
+hyper = "1.8.1"
+log = "0.4.28"
+env_logger = "0.11.8"
+chrono ="0.4.42" # local-offset 用于 FixedOffset

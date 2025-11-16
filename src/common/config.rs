@@ -1,0 +1,1 @@
+pub const WS_URL: &str = "wss://ws.okx.com:8443/ws/v5/public";
