@@ -1,1 +1,2 @@
 pub const WS_URL: &str = "wss://ws.okx.com:8443/ws/v5/public";
+pub const REST_URL: &str = "https://www.okx.com";
