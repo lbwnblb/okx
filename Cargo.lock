@@ -907,14 +907,13 @@ dependencies = [
  "chrono",
  "env_logger",
  "futures",
- "hyper",
  "log",
  "once_cell",
  "reqwest",
+ "serde",
  "sonic-rs",
  "tokio",
  "tokio-tungstenite",
- "url",
 ]
 
 [[package]]

@@ -8,11 +8,10 @@ rustflags = ["-C", "target-cpu=native"]
 tokio = { version = "1.48.0", features = ["full"] }
 futures = "0.3.31"
 tokio-tungstenite = {version = "0.28.0", features = ["native-tls"]}
-url = "2.5.7"
-hyper = "1.8.1"
 log = "0.4.28"
 env_logger = "0.11.8"
 chrono ="0.4.42" # local-offset 用于 FixedOffset
 reqwest = {version = "0.12.24", features = ["json"]}
 once_cell = "1.21.3"
 sonic-rs = "0.5.6"
+serde = { version = "1.0.228", features = ["derive"] }

@@ -1,10 +1,13 @@
 use std::io::Write;
+use std::ops::Add;
+use std::str::FromStr;
 use chrono::{FixedOffset, TimeZone, Utc};
 use env_logger::Builder;
-use log::LevelFilter;
+use log::{info, LevelFilter};
 use once_cell::sync::Lazy;
 use reqwest::{Client, Response};
 use reqwest::header::HeaderMap;
+use sonic_rs::from_str;
 use crate::common::config::REST_URL;
 
 static HTTP_CLIENT:Lazy<Client> = Lazy::new(||{
@@ -58,3 +61,50 @@ pub fn log_init(){
 
 }
 
+pub fn price_to_tick_int_str(price:&str, tick_size:&str)->u64{
+    if !price.contains(".") {
+        info!("price_to_tick_int_str: price is not decimal");
+        return u64::from_str(price).unwrap();
+    }
+    let price_split: Vec<&str> = price.split('.').collect();
+
+    let tick_size_split= tick_size.split(".").collect::<Vec<&str>>();
+    //小于1处理
+    if price_split[0].eq("0")  {
+        let tick_size_split_len = tick_size_split[1].len();
+        let price_split_len = price_split[1].len();
+        if price_split_len < tick_size_split_len {
+            let price_split_1 = price_split[1].to_string();
+            let price_split_1 = price_split_1.add("0");
+            let result = u64::from_str(&price_split_1).unwrap();
+            return result;
+        }
+        let price_split_1 = price_split[1].to_string();
+        let result = u64::from_str(&price_split_1).unwrap();
+        return  result
+    }
+
+    let tick_size_split_len = tick_size_split[1].len();
+    let price_split_len = price_split[1].len();
+    let price_split_1 = price_split[1].to_string();
+    let price_split_0 = price_split[0].to_string();
+    if price_split_len < tick_size_split_len {
+        let price_split_1 = price_split_1.add("0");
+        let result = u64::from_str(&price_split_0.add(price_split_1.as_ref())).unwrap();
+        return result;
+    }
+    let result = u64::from_str(&price_split_0.add(price_split_1.as_ref())).unwrap();
+    result
+
+}
+
+#[cfg(test)]
+mod test{
+    #[tokio::test]
+    async fn test_price_to_tick_int_str(){
+        let price = "0.1";
+        let tick_size = "0.1";
+        let result = super::price_to_tick_int_str(price, tick_size);
+        println!("result: {}", result);
+    }
+}
