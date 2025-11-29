@@ -11,7 +11,7 @@ use once_cell::sync::Lazy;
 use reqwest::{Client, Response};
 use reqwest::header::HeaderMap;
 use sha2::Sha256;
-use crate::common::config::{OKX_SIMULATION_API_KEY, OKX_SIMULATION_SECRET_KEY, OK_SIMULATION_ACCESS_PASSPHRASE, REST_URL};
+use crate::common::config::{OKX_SIMULATION_API_KEY, OKX_SIMULATION_SECRET_KEY, OK_SIMULATION_ACCESS_PASSPHRASE, REST_URL, REST_SIMULATION_URL};
 static HTTP_CLIENT:Lazy<Client> = Lazy::new(||{
         let mut headers = HeaderMap::new();
         headers.insert("Accept", "application/json".parse().unwrap());
@@ -48,13 +48,15 @@ impl HttpClientSimulation {
     pub async fn get(path: &str, params: Option<&[(&str, &str)]>)-> Result<Response, reqwest::Error>{
         let now_iso = utc_now_iso();
         let client = get_client();
-        let url = format!("{REST_URL}{path}");
+        let url = format!("{REST_SIMULATION_URL}{path}");
         let request_builder = client.get(url.as_str());
         let mut request_builder = request_builder.header("OK-ACCESS-KEY", OKX_SIMULATION_API_KEY.as_str())
-            .header("OK-ACCESS-TIMESTAMP", &now_iso).header("OK-ACCESS-PASSPHRASE", OK_SIMULATION_ACCESS_PASSPHRASE.as_str());
+            .header("OK-ACCESS-TIMESTAMP", &now_iso)
+            .header("OK-ACCESS-PASSPHRASE", OK_SIMULATION_ACCESS_PASSPHRASE.as_str())
+            .header("x-simulated-trading", "1");
         match params {
             None => {
-                let sign = sign(&now_iso, "GET", path,OKX_SIMULATION_SECRET_KEY.as_str());
+                let sign = sign(&now_iso, "GET", path, "", OKX_SIMULATION_SECRET_KEY.as_str());
                 request_builder = request_builder.header("OK-ACCESS-SIGN",sign);
                 Ok(request_builder.send().await?)
             }
@@ -62,7 +64,7 @@ impl HttpClientSimulation {
                 let path_and_query = request_builder.try_clone().unwrap().query(params).build()?;
                 let query = path_and_query.url().query().unwrap();
                 let path_and_query = format!("{}?{}", path,query);
-                let sign = sign(&now_iso, "GET", path_and_query.as_ref(),OKX_SIMULATION_SECRET_KEY.as_str());
+                let sign = sign(&now_iso, "GET", path_and_query.as_ref(), "", OKX_SIMULATION_SECRET_KEY.as_str());
                 request_builder = request_builder.header("OK-ACCESS-SIGN",sign);
                 Ok(request_builder.send().await?)
             }
@@ -133,19 +135,82 @@ pub fn utc_now_iso() -> String {
     // 格式化：固定使用 3 位毫秒 + Z
     now.format("%Y-%m-%dT%H:%M:%S.%3fZ").to_string()
 }
-pub fn sign(timestamp:&str, method:&str, path:&str,secret_key:&str)->String{
-    let params = format!("{}{}{}", timestamp, method, path);
-    // 创建 HMAC-SHA256 实例
-    let mut mac = Hmac::<Sha256>::new_from_slice(params.as_bytes())
+pub fn sign(timestamp: &str, method: &str, path: &str, body: &str, secret_key: &str) -> String {
+    // 拼接：timestamp + method + requestPath + body
+    let message = format!("{}{}{}{}", timestamp, method, path, body);
+    
+    // 用 secret_key 作为密钥创建 HMAC-SHA256
+    let mut mac = Hmac::<Sha256>::new_from_slice(secret_key.as_bytes())
         .expect("HMAC can take key of any size");
-    mac.update(secret_key.as_bytes());
+    // 用拼接的消息计算签名
+    mac.update(message.as_bytes());
+    
     let result = mac.finalize();
-    let code_bytes = result.into_bytes();
-    BASE64_STANDARD.encode(code_bytes)
+    BASE64_STANDARD.encode(result.into_bytes())
 }
 
 #[cfg(test)]
 mod test{
+    use super::*;
+    
+    #[tokio::test]
+    async fn test_okx_simulation_api_account_balance(){
+        // 测试模拟盘账户余额查询（需要签名的私有接口）
+        let result = HttpClientSimulation::get("/api/v5/account/balance", None).await;
+        
+        match result {
+            Ok(resp) => {
+                let status = resp.status();
+                let body = resp.text().await.unwrap();
+                println!("Status: {}", status);
+                println!("Response: {}", body);
+                assert!(status.is_success(), "API 请求失败: {}", body);
+            }
+            Err(e) => {
+                panic!("请求失败: {}", e);
+            }
+        }
+    }
+    
+    #[tokio::test]
+    async fn test_okx_simulation_api_positions(){
+        // 测试模拟盘持仓查询
+        let result = HttpClientSimulation::get("/api/v5/account/positions", None).await;
+        
+        match result {
+            Ok(resp) => {
+                let status = resp.status();
+                let body = resp.text().await.unwrap();
+                println!("Status: {}", status);
+                println!("持仓信息: {}", body);
+                assert!(status.is_success(), "持仓查询失败: {}", body);
+            }
+            Err(e) => {
+                panic!("请求失败: {}", e);
+            }
+        }
+    }
+    
+    #[tokio::test]
+    async fn test_okx_simulation_api_with_params(){
+        // 测试带查询参数的 API（查询特定币种余额）
+        let params = &[("ccy", "USDT")];
+        let result = HttpClientSimulation::get("/api/v5/account/balance", Some(params)).await;
+        
+        match result {
+            Ok(resp) => {
+                let status = resp.status();
+                let body = resp.text().await.unwrap();
+                println!("Status: {}", status);
+                println!("USDT 余额: {}", body);
+                assert!(status.is_success(), "查询失败: {}", body);
+            }
+            Err(e) => {
+                panic!("请求失败: {}", e);
+            }
+        }
+    }
+    
     #[tokio::test]
     async fn test_price_to_tick_int_str(){
         let price = "0.1";
