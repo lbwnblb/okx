@@ -1,7 +1,8 @@
 use std::sync::LazyLock;
 
-pub const WS_URL: &str = "wss://ws.okx.com:8443/ws/v5/public";
-pub const WS_SIMULATION_URL: &str = "wss://wspap.okx.com:8443/ws/v5/public";
+pub const WS_URL_PUBLIC: &str = "wss://ws.okx.com:8443/ws/v5/public";
+pub const WS_SIMULATION_URL_PUBLIC: &str = "wss://wspap.okx.com:8443/ws/v5/public";
+pub const WS_SIMULATION_URL_PRIVATE: &str = "wss://wspap.okx.com:8443/ws/v5/private";
 pub const REST_URL: &str = "https://www.okx.com";
 pub const REST_SIMULATION_URL: &str = "https://www.okx.com";
 pub static  OKX_API_KEY:LazyLock<String> = LazyLock::new(|| std::env::var("OKX_API_KEY").expect("OKX_API_KEY not set"));

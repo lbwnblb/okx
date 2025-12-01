@@ -11,6 +11,7 @@ use once_cell::sync::Lazy;
 use reqwest::{Client, Response};
 use reqwest::header::HeaderMap;
 use sha2::Sha256;
+use sonic_rs::{json, to_string, JsonValueTrait, Value};
 use crate::common::config::{OKX_SIMULATION_API_KEY, OKX_SIMULATION_SECRET_KEY, OK_SIMULATION_ACCESS_PASSPHRASE, REST_URL, REST_SIMULATION_URL};
 static HTTP_CLIENT:Lazy<Client> = Lazy::new(||{
         let mut headers = HeaderMap::new();
@@ -61,7 +62,8 @@ impl HttpClientSimulation {
                 Ok(request_builder.send().await?)
             }
             Some(params) => {
-                let path_and_query = request_builder.try_clone().unwrap().query(params).build()?;
+                request_builder = request_builder.query(params);
+                let path_and_query = request_builder.try_clone().unwrap().build()?;
                 let query = path_and_query.url().query().unwrap();
                 let path_and_query = format!("{}?{}", path,query);
                 let sign = sign(&now_iso, "GET", path_and_query.as_ref(), "", OKX_SIMULATION_SECRET_KEY.as_str());
@@ -70,6 +72,23 @@ impl HttpClientSimulation {
             }
         }
     }
+    pub async fn post(path: &str, json: Value)-> Result<Response, reqwest::Error>{
+        let now_iso = utc_now_iso();
+        let client = get_client();
+        let url = format!("{REST_SIMULATION_URL}{path}");
+        let request_builder = client.post(url.as_str());
+        let mut request_builder = request_builder.header("OK-ACCESS-KEY", OKX_SIMULATION_API_KEY.as_str())
+            .header("OK-ACCESS-TIMESTAMP", &now_iso)
+            .header("OK-ACCESS-PASSPHRASE", OK_SIMULATION_ACCESS_PASSPHRASE.as_str())
+            .header("x-simulated-trading", "1");
+        request_builder = request_builder.json(&json);
+        let sign = sign(&now_iso, "POST", path,to_string(&json).unwrap().as_str(), OKX_SIMULATION_SECRET_KEY.as_str());
+        request_builder = request_builder.header("OK-ACCESS-SIGN",sign);
+        Ok(request_builder.send().await?)
+    }
+
+
+
 }
 
 pub fn log_init(){
@@ -156,7 +175,7 @@ mod test{
     #[tokio::test]
     async fn test_okx_simulation_api_account_balance(){
         // 测试模拟盘账户余额查询（需要签名的私有接口）
-        let result = HttpClientSimulation::get("/api/v5/account/balance", None).await;
+        let result = HttpClientSimulation::get("/api/v5/account/balance?ccy=BTC", None).await;
         
         match result {
             Ok(resp) => {
@@ -194,7 +213,7 @@ mod test{
     #[tokio::test]
     async fn test_okx_simulation_api_with_params(){
         // 测试带查询参数的 API（查询特定币种余额）
-        let params = &[("ccy", "USDT")];
+        let params = &[("ccy", "BTC")];
         let result = HttpClientSimulation::get("/api/v5/account/balance", Some(params)).await;
         
         match result {
@@ -218,4 +237,18 @@ mod test{
         let result = super::price_to_tick_int_str(price, tick_size);
         println!("result: {}", result);
     }
+    #[tokio::test]
+    async fn order_test(){
+        let response = HttpClientSimulation::post("/api/v5/trade/order", json!({
+  "instId": "ETH-USDT",
+  "tdMode": "cash",
+  "side": "sell",
+  "ordType": "limit",
+  "px": "4000",
+  "sz": "0.01"
+})).await.unwrap();
+        println!("{}",response.text().await.unwrap());
+    }
+
+
 }

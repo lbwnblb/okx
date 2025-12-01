@@ -8,6 +8,7 @@ use tokio::sync::mpsc::{channel, unbounded_channel, Receiver};
 use tokio::sync::mpsc::error::{SendError, TrySendError};
 use tokio_tungstenite::tungstenite::Message::Text;
 use tokio_tungstenite::tungstenite::{Error, Message, Utf8Bytes};
+use okx::common::config::WS_SIMULATION_URL_PUBLIC;
 use okx::common::rest_api::instruments;
 use okx::common::utils::log_init;
 use okx::common::ws_api::{create_ws, subscribe, Books, OkxMessage, Ticker, TickerData, CHANNEL_BOOKS, CHANNEL_TICKERS};
@@ -15,7 +16,7 @@ use okx::common::ws_api::{create_ws, subscribe, Books, OkxMessage, Ticker, Ticke
 #[tokio::main]
 async fn main() ->Result<(), Box<dyn error::Error>>{
     log_init();
-    let ws = create_ws().await?;
+    let ws = create_ws(WS_SIMULATION_URL_PUBLIC).await?;
     let (mut tx, mut rx) = ws.split();
     tx.send(Text(Utf8Bytes::from(subscribe(CHANNEL_TICKERS, "BTC-USDT-SWAP")))).await?;
     tx.send(Text(Utf8Bytes::from(subscribe(CHANNEL_BOOKS, "BTC-USDT-SWAP")))).await?;
