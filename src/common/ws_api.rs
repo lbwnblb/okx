@@ -132,7 +132,7 @@ pub fn order()->String{
         "instId": "BTC-USDT",
         "tdMode": "isolated",
         "ordType": "market",
-        "sz": "100"
+        "sz": "0.1"
     }]
 }
 ).to_string()
