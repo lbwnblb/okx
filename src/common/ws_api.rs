@@ -1,7 +1,10 @@
+use crate::common::config::*;
 use log::info;
 use sonic_rs::{json, Deserialize, Serialize};
+use time::OffsetDateTime;
 use tokio::net::TcpStream;
 use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
+use crate::common::utils::sign;
 
 pub async fn create_ws(url: &str) ->Result<WebSocketStream<MaybeTlsStream<TcpStream>>, Box<dyn std::error::Error>>{
     // 创建连接并获取 WebSocket 流
@@ -101,6 +104,25 @@ pub fn subscribe(channel: &str,inst_id: &str)->String{
             "instId": inst_id
         }]
     }).to_string()
+}
+
+pub fn login()->String{
+    let timestamp = OffsetDateTime::now_utc().unix_timestamp();
+        
+    let sign  = sign(timestamp.to_string().as_str(), "GET", "/users/self/verify", "",get_secret_key());
+        json!({
+ "op": "login",
+ "args":
+  [
+     {
+       "apiKey": get_api_key(),
+       "passphrase": get_passphrase(),
+       "timestamp": timestamp,
+       "sign":sign
+      }
+   ]
+}).to_string()
+
 }
 
 #[cfg(test)]

@@ -11,15 +11,15 @@ use tokio_tungstenite::tungstenite::{Error, Message, Utf8Bytes};
 use okx::common::config::WS_SIMULATION_URL_PUBLIC;
 use okx::common::rest_api::instruments;
 use okx::common::utils::log_init;
-use okx::common::ws_api::{create_ws, subscribe, Books, OkxMessage, Ticker, TickerData, CHANNEL_BOOKS, CHANNEL_TICKERS};
+use okx::common::ws_api::{create_ws, login, subscribe, Books, OkxMessage, Ticker, TickerData, CHANNEL_BOOKS, CHANNEL_TICKERS};
 
 #[tokio::main]
 async fn main() ->Result<(), Box<dyn error::Error>>{
     log_init();
     let ws = create_ws(WS_SIMULATION_URL_PUBLIC).await?;
     let (mut tx, mut rx) = ws.split();
-    tx.send(Text(Utf8Bytes::from(subscribe(CHANNEL_TICKERS, "BTC-USDT-SWAP")))).await?;
-    tx.send(Text(Utf8Bytes::from(subscribe(CHANNEL_BOOKS, "BTC-USDT-SWAP")))).await?;
+    //登录
+    tx.send(Text(Utf8Bytes::from(login()))).await?;
     let (tx_ticker_data,rx_ticker_data) = channel::<TickerData>(512);
     let (tx_books_data,rx_books_data) = channel::<Books>(512);
     rx_ticker_data_spawn(rx_ticker_data);
@@ -34,40 +34,7 @@ async fn main() ->Result<(), Box<dyn error::Error>>{
                     Ok(message) => {
                         match message {
                             Text(text) => {
-                                let okx_message = from_str::<OkxMessage>(&text)?;
-                                if let Some(event) = okx_message.event{
-                                        info!("event : {}", event);
-                                        continue;
-                                }
-                                if let Some(arg) = okx_message.arg{
-                                    let channel = arg.channel;
-                                    match channel.as_str() {
-                                        CHANNEL_TICKERS => {
-                                            from_str::<Ticker>(&text).unwrap().data.into_iter().for_each(|item| {
-                                                if let Err( err) = tx_ticker_data.try_send(item){
-                                                    if let TrySendError::Full(_) = err {
-                                                        error!("{} full",CHANNEL_TICKERS)
-                                                    }
-                                                };
-                                            });
-                                        },
-                                        CHANNEL_BOOKS => {
-                                            let books = from_str::<Books>(&text).unwrap();
-                                            let result = tx_books_data.send(books).await;
-                                            match result {
-                                                Ok(_) => {},
-                                                Err(err) => {
-                                                    match err {
-                                                        SendError(error) => {
-                                                            error!("传输异常: {}",CHANNEL_BOOKS);
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        _ => {}
-                                    }
-                                }
+                                info!("{}", text.as_str());
                             }
                             _ => {}
                         }
