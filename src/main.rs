@@ -10,8 +10,8 @@ use tokio_tungstenite::tungstenite::Message::Text;
 use tokio_tungstenite::tungstenite::{Error, Message, Utf8Bytes};
 use okx::common::config::WS_SIMULATION_URL_PUBLIC;
 use okx::common::rest_api::instruments;
-use okx::common::utils::log_init;
-use okx::common::ws_api::{create_ws, login, subscribe, Books, OkxMessage, Ticker, TickerData, CHANNEL_BOOKS, CHANNEL_TICKERS};
+use okx::common::utils::{log_init, send_str};
+use okx::common::ws_api::{create_ws, login, order, subscribe, Books, OkxMessage, Ticker, TickerData, CHANNEL_BOOKS, CHANNEL_TICKERS};
 
 #[tokio::main]
 async fn main() ->Result<(), Box<dyn error::Error>>{
@@ -35,6 +35,14 @@ async fn main() ->Result<(), Box<dyn error::Error>>{
                         match message {
                             Text(text) => {
                                 info!("{}", text.as_str());
+                                match tx.send(send_str(order().as_str())).await {
+                                    Ok(_) => {
+                                        info!("{}", "send order success");
+                                        break
+                                    }
+                                    Err(_) => {}
+                                };
+                                
                             }
                             _ => {}
                         }
@@ -46,6 +54,7 @@ async fn main() ->Result<(), Box<dyn error::Error>>{
             }
         }
     }
+    Ok(())
 }
 pub  fn rx_ticker_data_spawn(mut rx: Receiver<TickerData>){
     spawn(async move {

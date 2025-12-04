@@ -12,6 +12,8 @@ use reqwest::{Client, Response};
 use reqwest::header::HeaderMap;
 use sha2::Sha256;
 use sonic_rs::{json, to_string, JsonValueTrait, Value};
+use tokio_tungstenite::tungstenite::{Message, Utf8Bytes};
+use tokio_tungstenite::tungstenite::Message::Text;
 use crate::common::config::{OKX_SIMULATION_API_KEY, OKX_SIMULATION_SECRET_KEY, OK_SIMULATION_ACCESS_PASSPHRASE, REST_URL, REST_SIMULATION_URL};
 static HTTP_CLIENT:Lazy<Client> = Lazy::new(||{
         let mut headers = HeaderMap::new();
@@ -89,6 +91,10 @@ impl HttpClientSimulation {
 
 
 
+}
+
+pub fn send_str(value: &str)->Message{
+    Text(Utf8Bytes::from(value))
 }
 
 pub fn log_init(){

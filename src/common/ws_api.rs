@@ -108,7 +108,7 @@ pub fn subscribe(channel: &str,inst_id: &str)->String{
 
 pub fn login()->String{
     let timestamp = OffsetDateTime::now_utc().unix_timestamp();
-        
+
     let sign  = sign(timestamp.to_string().as_str(), "GET", "/users/self/verify", "",get_secret_key());
         json!({
  "op": "login",
@@ -122,7 +122,20 @@ pub fn login()->String{
       }
    ]
 }).to_string()
-
+}
+pub fn order()->String{
+    json!({
+    "id": "1512",
+    "op": "order",
+    "args": [{
+        "side": "buy",
+        "instId": "BTC-USDT",
+        "tdMode": "isolated",
+        "ordType": "market",
+        "sz": "100"
+    }]
+}
+).to_string()
 }
 
 #[cfg(test)]
