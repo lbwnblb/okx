@@ -31,7 +31,28 @@ async fn main() ->Result<(), Box<dyn error::Error>>{
                     Ok(message) => {
                         match message {
                             Text(text) => {
-                                info!("{}", text.as_str());
+                                let result = from_str::<OkxMessage>(&text);
+                                if let Ok (result) = result{
+                                    if let Some(event) = result.event {
+                                        info!("event {}", event);
+                                    }
+                                    if let Some(args) = result.arg {
+                                        match args.channel.as_str() {
+                                            CHANNEL_BOOKS => {
+                                                let books = from_str::<Books>(&text).unwrap();
+                                                let data_vec = books.data;
+                                                for boo_data in data_vec {
+                                                    for bid in boo_data.bids {
+                                                        let x_0 = bid.get(0).unwrap();
+                                                        info!("价格:{}", x_0);
+                                                    }
+                                                }
+                                            }
+                                            _ => {}
+                                        }
+                                    }
+
+                                }
                             }
                             _ => {}
                         }
@@ -78,18 +99,11 @@ mod test{
 
     #[tokio::test]
     async fn test_main(){
-        let file_path = "data/instruments.json";
-
-        let read_instruments = from_reader::<&mut File, Vec<SwapInstrument>>(&mut File::open(file_path).unwrap()).unwrap();
-        for swap_instrument in read_instruments {
-            let a = "83709.7";
-            let swap_instrument_id = swap_instrument.inst_id;
-            let tick_sz = swap_instrument.tick_sz;
-            let split: Vec<&str> = a.split('.').collect();
-            let first = split[0];   // 第一个值
-            let second = split[1];  // 第二个值
-
-            println!("{}  {}",swap_instrument_id,tick_sz);
+        let books_vec = Vec::<[u64;400]>::new();
+        let mut asks = [[0u64;400]];
+        // println!("{}", asks.len());
+        for x in asks[0] {
+            println!("第{x}个")
         }
     }
     #[tokio::test]
