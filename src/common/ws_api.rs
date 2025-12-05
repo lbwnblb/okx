@@ -148,8 +148,8 @@ mod ws_test{
     use time::OffsetDateTime;
     use tokio_tungstenite::tungstenite::{Message, Utf8Bytes};
     use crate::common::config::WS_SIMULATION_URL_PRIVATE;
-    use crate::common::utils::sign;
-    use crate::common::ws_api::create_ws;
+    use crate::common::utils::{send_str, sign};
+    use crate::common::ws_api::{create_ws, order};
 
     #[tokio::test]
     async fn test_login(){
@@ -177,6 +177,8 @@ mod ws_test{
             match option {
                 Some(Ok(msg)) => {
                     println!("Received message: {:?}", msg);
+                    tx.send(send_str(order().as_str())).await.unwrap();
+                    break;
                 }
                 Some(Err(e)) => {
                     println!("Error: {:?}", e);
