@@ -1,3 +1,4 @@
+use std::collections::{BTreeMap, HashMap};
 use std::error;
 use std::sync::RwLock;
 use futures::{SinkExt, StreamExt};
@@ -8,7 +9,7 @@ use tokio::sync::mpsc::{channel, unbounded_channel, Receiver};
 use tokio::sync::mpsc::error::{SendError, TrySendError};
 use tokio_tungstenite::tungstenite::Message::Text;
 use tokio_tungstenite::tungstenite::{Error, Message, Utf8Bytes};
-use okx::common::config::WS_SIMULATION_URL_PUBLIC;
+use okx::common::config::{get_ws_public};
 use okx::common::rest_api::instruments;
 use okx::common::utils::{log_init, send_str};
 use okx::common::ws_api::{create_ws, login, order, subscribe, Books, OkxMessage, Ticker, TickerData, CHANNEL_BOOKS, CHANNEL_TICKERS};
@@ -16,7 +17,7 @@ use okx::common::ws_api::{create_ws, login, order, subscribe, Books, OkxMessage,
 #[tokio::main]
 async fn main() ->Result<(), Box<dyn error::Error>>{
     log_init();
-    let ws = create_ws(WS_SIMULATION_URL_PUBLIC).await?;
+    let ws = create_ws(get_ws_public()).await?;
     let (mut tx, mut rx) = ws.split();
     //登录
     tx.send(Text(Utf8Bytes::from(login()))).await?;
@@ -64,10 +65,18 @@ pub  fn rx_ticker_data_spawn(mut rx: Receiver<TickerData>){
     });
 }
 pub  fn rx_books_data_spawn(mut rx: Receiver<Books>){
-    let asks = Vec::<String>::new();
+
     spawn(async move {
-        while let Some(item) = rx.recv().await {
-            info!("{:?}",item);
+        // let map_books: = BTreeMap::new();
+        loop {
+            match rx.recv().await {
+                Some(item) => {
+                    info!("{:?}",item);
+                }
+                None => {
+                    break;
+                }
+            }
         }
     });
 }

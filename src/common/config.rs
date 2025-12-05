@@ -4,6 +4,7 @@ pub const IS_DEV: bool = true;
 pub const WS_URL_PUBLIC: &str = "wss://ws.okx.com:8443/ws/v5/public";
 pub const WS_SIMULATION_URL_PUBLIC: &str = "wss://wspap.okx.com:8443/ws/v5/public";
 pub const WS_SIMULATION_URL_PRIVATE: &str = "wss://wspap.okx.com:8443/ws/v5/private";
+pub const WS__URL_PRIVATE: &str = "wss://ws.okx.com:8443/ws/v5/private";
 pub const REST_URL: &str = "https://www.okx.com";
 pub const REST_SIMULATION_URL: &str = "https://www.okx.com";
 pub static  OKX_API_KEY:LazyLock<String> = LazyLock::new(|| std::env::var("OKX_API_KEY").expect("OKX_API_KEY not set"));
@@ -34,4 +35,16 @@ pub fn get_passphrase() -> & 'static str {
         return OK_SIMULATION_ACCESS_PASSPHRASE.as_str();
     }
     OK_ACCESS_PASSPHRASE.as_str()
+}
+pub fn get_ws_public()->&'static str{
+    if IS_DEV {
+        return WS_SIMULATION_URL_PUBLIC;
+    }
+    WS_URL_PUBLIC
+}
+pub fn get_ws_private()->&'static str{
+    if IS_DEV {
+        return WS_SIMULATION_URL_PRIVATE;
+    }
+    WS__URL_PRIVATE
 }
