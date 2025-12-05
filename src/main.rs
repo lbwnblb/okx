@@ -35,20 +35,19 @@ async fn main() ->Result<(), Box<dyn error::Error>>{
                                 if let Ok (result) = result{
                                     if let Some(event) = result.event {
                                         info!("event {}", event);
+                                        continue;
                                     }
                                     if let Some(args) = result.arg {
                                         match args.channel.as_str() {
                                             CHANNEL_BOOKS => {
-                                                info!("{}",text.as_str());
-                                                // break;
-                                                // let books = from_str::<Books>(&text).unwrap();
-                                                // let data_vec = books.data;
-                                                // for boo_data in data_vec {
-                                                //     for bid in boo_data.bids {
-                                                //         let x_0 = bid.get(0).unwrap();
-                                                //         info!("价格:{}", x_0);
-                                                //     }
-                                                // }
+                                                let books = from_str::<Books>(&text).unwrap();
+                                                let data_vec = books.data;
+                                                for boo_data in data_vec {
+                                                    for bid in boo_data.bids {
+                                                        let x_0 = bid.get(0).unwrap();
+                                                        info!("价格:{}", x_0);
+                                                    }
+                                                }
                                             }
                                             _ => {}
                                         }
