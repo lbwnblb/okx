@@ -20,11 +20,7 @@ async fn main() ->Result<(), Box<dyn error::Error>>{
     let ws = create_ws(get_ws_public()).await?;
     let (mut tx, mut rx) = ws.split();
     //登录
-    tx.send(Text(Utf8Bytes::from(login()))).await?;
-    let (tx_ticker_data,rx_ticker_data) = channel::<TickerData>(512);
-    let (tx_books_data,rx_books_data) = channel::<Books>(512);
-    rx_ticker_data_spawn(rx_ticker_data);
-    rx_books_data_spawn(rx_books_data);
+    tx.send(send_str(subscribe(CHANNEL_BOOKS, "BTC-USDT-SWAP").as_str())).await?;
     loop {
         let result = rx.next().await;
         match result {
@@ -36,14 +32,6 @@ async fn main() ->Result<(), Box<dyn error::Error>>{
                         match message {
                             Text(text) => {
                                 info!("{}", text.as_str());
-                                match tx.send(send_str(order().as_str())).await {
-                                    Ok(_) => {
-                                        info!("{}", "send order success");
-                                        break
-                                    }
-                                    Err(_) => {}
-                                };
-                                
                             }
                             _ => {}
                         }

@@ -97,7 +97,7 @@ pub const CHANNEL_BOOKS: &str = "books";
 pub const CHANNEL_BBO_TBT: &str = "bbo-tbt";
 
 pub fn subscribe(channel: &str,inst_id: &str)->String{
-    json!( {
+    json!({
         "op": "subscribe",
         "args": [{
             "channel": channel,
@@ -105,6 +105,7 @@ pub fn subscribe(channel: &str,inst_id: &str)->String{
         }]
     }).to_string()
 }
+
 
 pub fn login()->String{
     let timestamp = OffsetDateTime::now_utc().unix_timestamp();
