@@ -45,7 +45,7 @@ async fn main() ->Result<(), Box<dyn error::Error>>{
                                                 for boo_data in data_vec {
                                                     for bid in boo_data.bids {
                                                         let x_0 = bid.get(0).unwrap();
-                                                        info!("价格:{}", x_0);
+                                                        info!("bid 价格:{}", x_0);
                                                     }
                                                 }
                                             }
@@ -94,18 +94,21 @@ pub  fn rx_books_data_spawn(mut rx: Receiver<Books>){
 #[cfg(test)]
 mod test{
     use std::fs::File;
-    use sonic_rs::{from_reader, to_writer_pretty};
+    use std::io::BufReader;
+    use sonic_rs::{from_reader, from_str, to_writer_pretty};
     use sonic_rs::writer::BufferedWriter;
-    use okx::common::rest_api::{instruments, ticker, SwapInstrument};
+    use tokio::fs::read_to_string;
+    use okx::common::rest_api::{instruments, ticker, OkxSwapInstrumentsResponse, SwapInstrument};
+    use okx::common::utils::price_to_tick_int_str;
 
     #[tokio::test]
     async fn test_main(){
-        let books_vec = Vec::<[u64;400]>::new();
-        let mut asks = [[0u64;400]];
-        // println!("{}", asks.len());
-        for x in asks[0] {
-            println!("第{x}个")
-        }
+        let price_str = "91095.5";
+        let file = File::open("data/instruments.json").unwrap();
+        let reader = BufReader::new(file);
+        let instruments: Vec<SwapInstrument> = from_reader::<BufReader<File>,Vec<SwapInstrument>>(reader).unwrap();
+        println!("{:?}",instruments);
+
     }
     #[tokio::test]
     async fn ticker_test(){
