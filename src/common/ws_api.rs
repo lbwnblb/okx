@@ -130,9 +130,11 @@ pub fn order()->String{
     "args": [{
         "side": "buy",
         "instId": "BTC-USDT",
-        "tdMode": "isolated",
-        "ordType": "market",
-        "sz": "0.1"
+        "tdMode": "cash",  // 改为 cash 模式（现货）
+        "ordType": "limit",  // 限价单更安全
+        "px": "50000",  // 添加价格
+        "sz": "0.0001",  // 减小数量避免资金不足
+        "ccy": "USDT"  // 关键：添加交易币种
     }]
 }
 ).to_string()
@@ -171,14 +173,28 @@ mod ws_test{
    ]
 }
 )).unwrap();
+let mut logged_in = false;
+let mut order_sent = false;
         tx.send(Message::Text(Utf8Bytes::from(x))).await.unwrap();
         loop {
             let option = rx.next().await;
             match option {
-                Some(Ok(msg)) => {
-                    println!("Received message: {:?}", msg);
+                Some(Ok(text)) => {
+                    let msg_str = text.to_string();
+                
+                // 登录成功
+                if !logged_in && msg_str.contains("\"event\":\"login\"") && msg_str.contains("\"code\":\"0\"") {
+                    println!("✅ Login successful");
+                    logged_in = true;
+                    println!("Sending order...");
                     tx.send(send_str(order().as_str())).await.unwrap();
+                    order_sent = true;
+                }
+                // 下单响应
+                else if order_sent && msg_str.contains("\"op\":\"order\"") {
+                    println!("📦 Order response: {}", msg_str);
                     break;
+                }
                 }
                 Some(Err(e)) => {
                     println!("Error: {:?}", e);
