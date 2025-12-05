@@ -40,7 +40,7 @@ async fn main() ->Result<(), Box<dyn error::Error>>{
                                         match args.channel.as_str() {
                                             CHANNEL_BOOKS => {
                                                 info!("{}",text.as_str());
-                                                break;
+                                                // break;
                                                 // let books = from_str::<Books>(&text).unwrap();
                                                 // let data_vec = books.data;
                                                 // for boo_data in data_vec {
