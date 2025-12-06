@@ -107,7 +107,13 @@ mod test{
         let file = File::open("data/instruments.json").unwrap();
         let reader = BufReader::new(file);
         let instruments: Vec<SwapInstrument> = from_reader::<BufReader<File>,Vec<SwapInstrument>>(reader).unwrap();
-        println!("{:?}",instruments);
+        for swap_instrument in instruments {
+            if swap_instrument.settle_ccy.eq("USDT") {
+                println!("{:?}",swap_instrument.inst_id);
+            }
+            // println!("{}",swap_instrument.settle_ccy)
+            // break
+        }
 
     }
     #[tokio::test]
