@@ -1,9 +1,11 @@
 use std::collections::{BTreeMap, HashMap};
 use std::error;
+use std::fs::File;
 use std::sync::RwLock;
 use futures::{SinkExt, StreamExt};
 use log::{error, info};
 use sonic_rs::{from_str, JsonValueTrait};
+use sonic_rs::writer::BufferedWriter;
 use tokio::spawn;
 use tokio::sync::mpsc::{channel, unbounded_channel, Receiver};
 use tokio::sync::mpsc::error::{SendError, TrySendError};
@@ -19,7 +21,6 @@ async fn main() ->Result<(), Box<dyn error::Error>>{
     log_init();
     let ws = create_ws(get_ws_public()).await?;
     let (mut tx, mut rx) = ws.split();
-    //登录
     tx.send(send_str(subscribe(CHANNEL_BOOKS, "BTC-USDT-SWAP").as_str())).await?;
     loop {
         let result = rx.next().await;
@@ -42,12 +43,8 @@ async fn main() ->Result<(), Box<dyn error::Error>>{
                                             CHANNEL_BOOKS => {
                                                 let books = from_str::<Books>(&text).unwrap();
                                                 let data_vec = books.data;
-                                                for boo_data in data_vec {
-                                                    for bid in boo_data.bids {
-                                                        let x_0 = bid.get(0).unwrap();
-                                                        info!("bid 价格:{}", x_0);
-                                                    }
-                                                }
+                                                sonic_rs::to_writer_pretty(BufferedWriter::new(File::create("data/books.json").unwrap()), &data_vec).unwrap();
+                                                break
                                             }
                                             _ => {}
                                         }

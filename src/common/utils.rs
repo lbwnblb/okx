@@ -49,6 +49,13 @@ pub fn get_sz(inst_id: &str) -> Option<&String> {
     };
     None
 }
+pub fn get_min_sz(inst_id:&str) ->Option<&String>{
+    if let Some(instrument) = get_swap_instrument(inst_id) {
+        return Some(&instrument.min_sz);
+    };
+    None
+
+}
 pub fn get_swap_instrument(inst_id: &str) -> Option<&SwapInstrument> {
     INSTRUMENTS_MAP.get(inst_id)
 }
@@ -238,8 +245,10 @@ pub fn sign(timestamp: &str, method: &str, path: &str, body: &str, secret_key: &
 
 #[cfg(test)]
 mod test {
+    use sonic_rs::from_reader;
     use super::*;
     use crate::common::rest_api::ticker;
+    use crate::common::ws_api::{BookData, Books};
 
     #[tokio::test]
     async fn test_okx_simulation_api_account_balance() {
@@ -309,7 +318,14 @@ mod test {
         let result = price_to_tick_int_str(price, tick_size);
         // println!("result: {}", result);
         let sub = result - 400;
-        // let map_vec:HashMap<String,[400;0]>
+        let map_book_vec:HashMap<String,[u64;400]> = HashMap::new();
+        let book_json_vec = from_reader::<BufReader<File>, Vec<BookData>>(BufReader::new(File::open("data/books.json").unwrap())).unwrap();
+        let book_data = book_json_vec.into_iter().last().unwrap();
+        let vec_asks = book_data.asks.into_iter().map(|vec_str| (price_to_tick_int_str(vec_str.get(0).unwrap(), get_sz(inst_id).unwrap()),price_to_tick_int_str(vec_str.get(1).unwrap(), get_min_sz(inst_id).unwrap()))).collect::<Vec<(u64,u64)>>();
+        // let vec_bids = book_data.bids;
+        for (a1,a2) in vec_asks {
+            println!("{} {}", a1, a2)
+        }
     }
     #[tokio::test]
     async fn order_test() {
