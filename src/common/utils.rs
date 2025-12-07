@@ -188,14 +188,19 @@ pub fn log_init() {
 }
 
 pub fn price_to_tick_int_str(price: &str, tick_size: &str) -> u64 {
-    if !price.contains(".") {
+    if !price.contains(".") && !tick_size.contains(".") {
         info!("price_to_tick_int_str: price is not decimal");
         return u64::from_str(price).unwrap();
     }
+    if !price.contains(".") && tick_size.contains(".") {
+        let tick_size_sp: Vec<&str> = tick_size.split(".").collect();
+        return u64::from_str(format!("{}{}", price,tick_size_sp[1]).as_str()).unwrap()
+    }
+
     let price_split: Vec<&str> = price.split('.').collect();
 
     let tick_size_split = tick_size.split(".").collect::<Vec<&str>>();
-    //小于1处理
+    //小于0处理
     if price_split[0].eq("0") {
         let tick_size_split_len = tick_size_split[1].len();
         let price_split_len = price_split[1].len();
@@ -209,7 +214,7 @@ pub fn price_to_tick_int_str(price: &str, tick_size: &str) -> u64 {
         let result = u64::from_str(&price_split_1).unwrap();
         return result;
     }
-
+    //大于0处理
     let tick_size_split_len = tick_size_split[1].len();
     let price_split_len = price_split[1].len();
     let price_split_1 = price_split[1].to_string();
@@ -310,22 +315,26 @@ mod test {
 
     #[tokio::test]
     async fn test_price_to_tick_int_str() {
-        let inst_id = "SOL-USDT-SWAP";
-        let data = ticker(inst_id).await.unwrap().data;
-        let price: &str = data.get(0).unwrap().last.as_str();
-        // let price = "9111.1";
-        let tick_size = get_sz(inst_id).unwrap();
-        let result = price_to_tick_int_str(price, tick_size);
+        let inst_id = "BTC-USDT-SWAP";
+
         // println!("result: {}", result);
-        let sub = result - 400;
-        let map_book_vec:HashMap<String,[u64;400]> = HashMap::new();
+
+        let mut map_book_vec:HashMap<(String, u64, u64),Vec<u64>> = HashMap::new();
         let book_json_vec = from_reader::<BufReader<File>, Vec<BookData>>(BufReader::new(File::open("data/books.json").unwrap())).unwrap();
         let book_data = book_json_vec.into_iter().last().unwrap();
         let vec_asks = book_data.asks.into_iter().map(|vec_str| (price_to_tick_int_str(vec_str.get(0).unwrap(), get_sz(inst_id).unwrap()),price_to_tick_int_str(vec_str.get(1).unwrap(), get_min_sz(inst_id).unwrap()))).collect::<Vec<(u64,u64)>>();
         // let vec_bids = book_data.bids;
-        for (a1,a2) in vec_asks {
-            println!("{} {}", a1, a2)
-        }
+        let max_price = vec_asks.iter().map(|(price, _)| { price }).max().unwrap();
+        let min_price = vec_asks.iter().map(|(price, _)| { price }).min().unwrap();
+        let sub_price = max_price - min_price;
+        println!("max_price: {}, min_price: {}, sub_price: {}", max_price, min_price, sub_price);
+        let mut vec_price_v = vec![0u64;sub_price as usize];
+        vec_asks.iter().for_each(|(price,sz)| {
+            println!("index: {},price:{} min_price:{} sz: {}", price-min_price, price,min_price, sz);
+            vec_price_v[(price-min_price) as usize] = *sz;
+        });
+
+        map_book_vec.insert(("BTC-USDT-SWAP".to_string(),min_price.clone(),max_price.clone()),vec_price_v);
     }
     #[tokio::test]
     async fn order_test() {
