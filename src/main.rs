@@ -14,14 +14,19 @@ use tokio_tungstenite::tungstenite::{Error, Message, Utf8Bytes};
 use okx::common::config::{get_ws_public};
 use okx::common::rest_api::instruments;
 use okx::common::utils::{log_init, send_str};
-use okx::common::ws_api::{create_ws, login, order, subscribe, Books, OkxMessage, Ticker, TickerData, CHANNEL_BOOKS, CHANNEL_TICKERS};
+use okx::common::ws_api::{create_ws, login, order, subscribe, BookData, Books, OkxMessage, Ticker, TickerData, CHANNEL_BOOKS, CHANNEL_TICKERS};
 
 #[tokio::main]
 async fn main() ->Result<(), Box<dyn error::Error>>{
     log_init();
     let ws = create_ws(get_ws_public()).await?;
+    let inst_id = "BTC-USDT-SWAP";
     let (mut tx, mut rx) = ws.split();
-    tx.send(send_str(subscribe(CHANNEL_BOOKS, "BTC-USDT-SWAP").as_str())).await?;
+    tx.send(send_str(subscribe(CHANNEL_BOOKS,inst_id ).as_str())).await?;
+    tx.send(send_str(subscribe(CHANNEL_TICKERS,inst_id).as_str())).await?;
+    let (book_channel_tx,book_channel_rx) = channel::<(Books,String,String)>(512);
+    spawn(rx_books_spawn(book_channel_rx));
+    let mut map_inst_id_price = HashMap::<String,String>::new();
     loop {
         let result = rx.next().await;
         match result {
@@ -42,9 +47,14 @@ async fn main() ->Result<(), Box<dyn error::Error>>{
                                         match args.channel.as_str() {
                                             CHANNEL_BOOKS => {
                                                 let books = from_str::<Books>(&text).unwrap();
-                                                let data_vec = books.data;
-                                                sonic_rs::to_writer_pretty(BufferedWriter::new(File::create("data/books.json").unwrap()), &data_vec).unwrap();
-                                                break
+                                                book_channel_tx.send((books,args.inst_id.clone(),match map_inst_id_price.get(&args.inst_id) { Some(o)=>{o.clone()},None=>"0".to_string()})).await.unwrap();
+                                            }
+                                            CHANNEL_TICKERS=>{
+                                                let ticker = from_str::<Ticker>(&text).unwrap();
+                                                for tick_data in ticker.data {
+                                                    map_inst_id_price.insert(tick_data.inst_id,tick_data.last);
+                                                }
+
                                             }
                                             _ => {}
                                         }
@@ -71,21 +81,18 @@ pub  fn rx_ticker_data_spawn(mut rx: Receiver<TickerData>){
         }
     });
 }
-pub  fn rx_books_data_spawn(mut rx: Receiver<Books>){
-
-    spawn(async move {
+pub async fn rx_books_spawn(mut rx: Receiver<(Books,String,String)>){
         // let map_books: = BTreeMap::new();
         loop {
             match rx.recv().await {
-                Some(item) => {
-                    info!("{:?}",item);
+                Some((b,id,p)) => {
+                    // b.
                 }
                 None => {
                     break;
                 }
             }
         }
-    });
 }
 
 #[cfg(test)]

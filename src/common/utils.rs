@@ -328,13 +328,16 @@ mod test {
         let min_price = vec_asks.iter().map(|(price, _)| { price }).min().unwrap();
         let sub_price = max_price - min_price;
         println!("max_price: {}, min_price: {}, sub_price: {}", max_price, min_price, sub_price);
-        let mut vec_price_v = vec![0u64;sub_price as usize];
+        let mut vec_price_v = vec![0u64;(sub_price+1) as usize];
+        println!("{}", vec_price_v.len());
+        println!("{}",max_price-min_price);
         vec_asks.iter().for_each(|(price,sz)| {
             println!("index: {},price:{} min_price:{} sz: {}", price-min_price, price,min_price, sz);
             vec_price_v[(price-min_price) as usize] = *sz;
         });
 
         map_book_vec.insert(("BTC-USDT-SWAP".to_string(),min_price.clone(),max_price.clone()),vec_price_v);
+        
     }
     #[tokio::test]
     async fn order_test() {
