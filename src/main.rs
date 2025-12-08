@@ -128,20 +128,43 @@ pub async fn rx_books_spawn(mut rx: Receiver<(Books,String,String)>){
                                 //
                                 // }
                                 let keys = map_book_vec.keys().cloned().collect::<Vec<(String,u64,u64)>>();
+                                let mut flag_min = 0u64;
+                                let mut flag_max = 0u64;
                                 for (p,v) in asks_p_v.iter() {
                                 // keys.for_each(|(inst_id_for,min_price,max_price)| {
                                     let mut key = None;
                                     for (inst_id_for,min_price,max_price) in &keys{
                                         if !inst_id.eq(inst_id_for) {
-                                            break
+                                            continue
                                         }
                                         if  min_price <= p && p <= max_price  {
                                             key = Some((inst_id_for.clone(),min_price.clone(),max_price.clone()));
                                         }
+                                        if min_price > p {
+                                            flag_min = min_price.clone();
+                                        }
+                                        if max_price < p {
+                                            flag_max = max_price.clone();
+                                        }
                                     }
                                 // });
                                     match key {
-                                        None => {}
+                                        None => {
+                                            if flag_min != 0 {
+                                                let interval = flag_min-p;
+                                                if interval > 1000 {
+                                                    continue
+                                                }
+                                                map_book_vec.insert((inst_id.clone(),flag_min-1000,flag_min.clone()-1),vec![0u64;1000]);
+                                            }
+                                            if flag_max != 0 {
+                                                let interval = p-flag_max;
+                                                if interval > 1000 {
+                                                    continue
+                                                }
+                                                map_book_vec.insert((inst_id.clone(),flag_max+1,flag_max+1000),vec![0u64;1000]);
+                                            }
+                                        }
                                         Some((i,m_p,mi_p)) => {
                                             if let Some(vec) = map_book_vec.get_mut(&(i,m_p,mi_p)) {
                                                 vec[(p-mi_p)as usize] = *v;
