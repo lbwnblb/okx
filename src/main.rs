@@ -4,6 +4,7 @@ use std::fs::File;
 use std::sync::RwLock;
 use futures::{SinkExt, StreamExt};
 use log::{error, info};
+use serde::de::Unexpected::Option;
 use sonic_rs::{from_str, JsonValueTrait};
 use sonic_rs::writer::BufferedWriter;
 use tokio::spawn;
@@ -100,7 +101,7 @@ pub async fn rx_books_spawn(mut rx: Receiver<(Books,String,String)>){
                             //
                             // map_book_vec.insert(("BTC-USDT-SWAP".to_string(),min_price.clone(),max_price.clone()),vec_price_v);
                             for b_d in b.data.into_iter() {
-                                let vec_asks = b_d.asks.into_iter().map(|vec_str| (price_to_tick_int_str(vec_str.get(0).unwrap(), get_sz(&inst_id).unwrap()), price_to_tick_int_str(vec_str.get(1).unwrap(), get_min_sz(&inst_id).unwrap()))).collect::<Vec<(u64, u64)>>();
+                                let vec_asks = b_d.asks.into_iter().map(|vec_str| as_bs_to_pv(&inst_id, vec_str)).collect::<Vec<(u64, u64)>>();
                                 let max_price = vec_asks.iter().map(|(price, _)| { price }).max().unwrap();
                                 let min_price = vec_asks.iter().map(|(price, _)| { price }).min().unwrap();
                                 let interval = max_price - min_price;
@@ -114,9 +115,42 @@ pub async fn rx_books_spawn(mut rx: Receiver<(Books,String,String)>){
                         }
                         "update" =>{
                             for b_d in b.data.into_iter() {
-                                for (inst_id_,min_price,max_price) in map_book_vec.keys() {
+                                let asks_p_v = b_d.asks.into_iter().map(|vec_str| as_bs_to_pv(&inst_id, vec_str)).collect::<Vec<(u64, u64)>>();
+                                // for (inst_id_for,min_price,max_price) in map_book_vec.keys() {
+                                //     for (p,v) in asks_p_v.iter() {
+                                //         if !inst_id.eq(inst_id_for) {
+                                //             break
+                                //         }
+                                //         if  min_price <= p && p <= max_price  {
+                                //
+                                //         }
+                                //     }
+                                //
+                                // }
+                                let keys = map_book_vec.keys().cloned().collect::<Vec<(String,u64,u64)>>();
+                                for (p,v) in asks_p_v.iter() {
+                                // keys.for_each(|(inst_id_for,min_price,max_price)| {
+                                    let mut key = None;
+                                    for (inst_id_for,min_price,max_price) in &keys{
+                                        if !inst_id.eq(inst_id_for) {
+                                            break
+                                        }
+                                        if  min_price <= p && p <= max_price  {
+                                            key = Some((inst_id_for.clone(),min_price.clone(),max_price.clone()));
+                                        }
+                                    }
+                                // });
+                                    match key {
+                                        None => {}
+                                        Some((i,m_p,mi_p)) => {
+                                            if let Some(vec) = map_book_vec.get_mut(&(i,m_p,mi_p)) {
+                                                vec[(p-mi_p)as usize] = *v;
+                                            }
+                                        }
+                                    }
 
                                 }
+
                             }
                         }
                         _ => {}
@@ -127,6 +161,10 @@ pub async fn rx_books_spawn(mut rx: Receiver<(Books,String,String)>){
                 }
             }
         }
+}
+
+fn as_bs_to_pv(inst_id: &String, vec_str: Vec<String>) -> (u64, u64) {
+    (price_to_tick_int_str(vec_str.get(0).unwrap(), get_sz(&inst_id).unwrap()), price_to_tick_int_str(vec_str.get(1).unwrap(), get_min_sz(&inst_id).unwrap()))
 }
 
 #[cfg(test)]
