@@ -21,7 +21,7 @@ use okx::common::ws_api::{create_ws, login, order, subscribe, BookData, Books, B
 async fn main() ->Result<(), Box<dyn error::Error>>{
     log_init();
     let ws = create_ws(get_ws_public()).await?;
-    let inst_id = "BTC-USDT-SWAP";
+    let inst_id = "ETH-USDT-SWAP";
     let (mut tx, mut rx) = ws.split();
     tx.send(send_str(subscribe(CHANNEL_BOOKS,inst_id ).as_str())).await?;
     tx.send(send_str(subscribe(CHANNEL_TICKERS,inst_id).as_str())).await?;
@@ -59,13 +59,13 @@ async fn main() ->Result<(), Box<dyn error::Error>>{
                                                 let books5 = from_str::<Books5>(&text).unwrap();
                                                 for book_data in books5.data {
                                                     let mut output = format!("========== BOOKS5: {} ==========\n", args.inst_id);
-                                                    output.push_str("Asks (卖单):\n");
+                                                    output.push_str("Asks:\n");
                                                     for (i, ask) in book_data.asks.iter().enumerate() {
                                                         if ask.len() >= 2 {
                                                             output.push_str(&format!("  [{}] Price: {}, Size: {}\n", i+1, ask[0], ask[1]));
                                                         }
                                                     }
-                                                    output.push_str("Bids (买单):\n");
+                                                    output.push_str("Bids :\n");
                                                     for (i, bid) in book_data.bids.iter().enumerate() {
                                                         if bid.len() >= 2 {
                                                             output.push_str(&format!("  [{}] Price: {}, Size: {}\n", i+1, bid[0], bid[1]));
