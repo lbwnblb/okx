@@ -94,6 +94,7 @@ pub struct TickerData {
 
 pub const CHANNEL_TICKERS: &str = "tickers";
 pub const CHANNEL_BOOKS: &str = "books";
+pub const CHANNEL_BOOKS5: &str = "books5";
 pub const CHANNEL_BBO_TBT: &str = "bbo-tbt";
 
 pub fn subscribe(channel: &str,inst_id: &str)->String{

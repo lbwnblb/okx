@@ -15,7 +15,7 @@ use tokio_tungstenite::tungstenite::{Error, Message, Utf8Bytes};
 use okx::common::config::{get_ws_public};
 use okx::common::rest_api::instruments;
 use okx::common::utils::{get_min_sz, get_sz, log_init, price_to_tick_int_str, send_str};
-use okx::common::ws_api::{create_ws, login, order, subscribe, BookData, Books, OkxMessage, Ticker, TickerData, CHANNEL_BOOKS, CHANNEL_TICKERS};
+use okx::common::ws_api::{create_ws, login, order, subscribe, BookData, Books, OkxMessage, Ticker, TickerData, CHANNEL_BOOKS, CHANNEL_BOOKS5, CHANNEL_TICKERS};
 
 #[tokio::main]
 async fn main() ->Result<(), Box<dyn error::Error>>{
@@ -25,6 +25,7 @@ async fn main() ->Result<(), Box<dyn error::Error>>{
     let (mut tx, mut rx) = ws.split();
     tx.send(send_str(subscribe(CHANNEL_BOOKS,inst_id ).as_str())).await?;
     tx.send(send_str(subscribe(CHANNEL_TICKERS,inst_id).as_str())).await?;
+    tx.send(send_str(subscribe(CHANNEL_BOOKS5,inst_id).as_str())).await?;
     let (book_channel_tx,book_channel_rx) = channel::<(Books,String,String)>(512);
     spawn(rx_books_spawn(book_channel_rx));
     let mut map_inst_id_price = HashMap::<String,String>::new();
@@ -52,6 +53,25 @@ async fn main() ->Result<(), Box<dyn error::Error>>{
                                                 if book_channel_tx.send((books,args.inst_id.clone(),match map_inst_id_price.get(&args.inst_id) { Some(o)=>{o.clone()},None=>"0".to_string()})).await.is_err() {
                                                     error!("book channel closed");
                                                     break;
+                                                }
+                                            }
+                                            CHANNEL_BOOKS5=>{
+                                                let books5 = from_str::<Books>(&text).unwrap();
+                                                for book_data in books5.data {
+                                                    info!("========== BOOKS5: {} ==========", args.inst_id);
+                                                    info!("Asks (卖单):");
+                                                    for (i, ask) in book_data.asks.iter().enumerate() {
+                                                        if ask.len() >= 2 {
+                                                            info!("  [{}] Price: {}, Size: {}", i+1, ask[0], ask[1]);
+                                                        }
+                                                    }
+                                                    info!("Bids (买单):");
+                                                    for (i, bid) in book_data.bids.iter().enumerate() {
+                                                        if bid.len() >= 2 {
+                                                            info!("  [{}] Price: {}, Size: {}", i+1, bid[0], bid[1]);
+                                                        }
+                                                    }
+                                                    info!("======================================");
                                                 }
                                             }
                                             CHANNEL_TICKERS=>{
