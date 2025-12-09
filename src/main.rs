@@ -309,35 +309,12 @@ fn print_orderbook(
         }
     }
     bids_list.sort_by_key(|(price, _)| std::cmp::Reverse(*price));
-    
-    println!("\n========== OrderBook: {} ==========", inst_id);
-    println!("{:<15} {:<20} {:<20}", "Price", "Asks Size", "Bids Size");
-    println!("{}", "-".repeat(55));
-    
-    // 取前20档 asks（最低价的20档）和前20档 bids（最高价的20档）
-    let asks_to_show = &asks_list[..asks_list.len().min(20)];
-    let bids_to_show = &bids_list[..bids_list.len().min(20)];
-    
-    // 先显示最低的20档卖单（按价格从低到高）
-    for (price, sz) in asks_to_show {
-        println!("{:<15.4} {:<20.4} {:<20}", 
-            tick_int_to_price(*price, tick_size),
-            tick_int_to_price(*sz, min_sz),
-            "-"
-        );
-    }
-    
-    // 分隔线
-    println!("{}", "=".repeat(55));
-    
-    // 再显示最高的20档买单（按价格从高到低）
-    for (price, sz) in bids_to_show {
-        println!("{:<15.4} {:<20} {:<20.4}", 
-            tick_int_to_price(*price, tick_size),
-            "-",
-            tick_int_to_price(*sz, min_sz)
-        );
-    }
+    bids_list.iter().take(5).for_each(|(price, sz)| {
+        println!("bids price {price} sz {sz}")
+    });
+    asks_list.iter().take(5).for_each(|(price, sz)| {
+        println!("asks price {price} sz {sz}")
+    });
     
     println!("====================================\n");
 }
