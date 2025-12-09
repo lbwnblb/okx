@@ -61,6 +61,26 @@ pub struct BookData {
     #[serde(rename = "seqId")]
     pub seq_id: i64,
 }
+
+/// Books5 结构体（只包含前5档）
+#[derive(Debug, Deserialize)]
+pub struct Books5 {
+    #[serde(rename = "action")]
+    pub action: String,
+    #[serde(rename = "data")]
+    pub data: Vec<Book5Data>,
+}
+
+/// Book5Data 结构体 - books5 不包含 checksum 等字段
+#[derive(Debug, Deserialize)]
+pub struct Book5Data {
+    #[serde(rename = "asks")]
+    pub asks: Vec<Vec<String>>,
+    #[serde(rename = "bids")]
+    pub bids: Vec<Vec<String>>,
+    #[serde(rename = "ts")]
+    pub ts: String,
+}
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")] // 自动把 JSON 的驼峰(lastSz)转为 Rust 的蛇形(last_sz)
 pub struct TickerData {
