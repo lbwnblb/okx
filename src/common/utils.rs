@@ -228,6 +228,32 @@ pub fn price_to_tick_int_str(price: &str, tick_size: &str) -> u64 {
     result
 }
 
+pub fn tick_int_to_price_str(tick_int: u64, tick_size: &str) -> String {
+    // 如果 tick_size 没有小数点，直接返回整数字符串
+    if !tick_size.contains(".") {
+        return tick_int.to_string();
+    }
+
+    let tick_size_split: Vec<&str> = tick_size.split('.').collect();
+    let decimal_places = tick_size_split[1].len();
+    let tick_int_str = tick_int.to_string();
+    let tick_int_len = tick_int_str.len();
+
+    // 如果整数长度小于等于小数位数，说明整数部分为 0
+    if tick_int_len <= decimal_places {
+        // 补充前导 0
+        let padding = "0".repeat(decimal_places - tick_int_len);
+        return format!("0.{}{}", padding, tick_int_str);
+    }
+
+    // 整数长度大于小数位数，需要分割
+    let split_pos = tick_int_len - decimal_places;
+    let integer_part = &tick_int_str[..split_pos];
+    let decimal_part = &tick_int_str[split_pos..];
+
+    format!("{}.{}", integer_part, decimal_part)
+}
+
 #[cfg(test)]
 mod test_p {
     use super::*;
@@ -237,6 +263,13 @@ mod test_p {
         let min_sz = get_min_sz(inst_id).unwrap();
         let int_str = price_to_tick_int_str("0", min_sz);
         println!("{}", int_str);
+    }
+    #[test]
+    fn test_tick_int_to_price_str() {
+        let inst_id = "BTC-USDT-SWAP";
+        let min_sz = get_min_sz(inst_id).unwrap();
+        let price_str = tick_int_to_price_str(7371, min_sz);
+        println!("{}", price_str);
     }
 }
 

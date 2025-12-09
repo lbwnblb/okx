@@ -14,7 +14,7 @@ use tokio_tungstenite::tungstenite::Message::Text;
 use tokio_tungstenite::tungstenite::{Bytes, Error, Message, Utf8Bytes};
 use okx::common::config::{get_ws_public};
 use okx::common::rest_api::instruments;
-use okx::common::utils::{get_min_sz, get_sz, log_init, price_to_tick_int_str, send_str};
+use okx::common::utils::{get_min_sz, get_sz, log_init, price_to_tick_int_str, send_str, tick_int_to_price_str};
 use okx::common::ws_api::{create_ws, login, order, subscribe, BookData, Books, Books5, OkxMessage, Ticker, TickerData, CHANNEL_BOOKS, CHANNEL_BOOKS5, CHANNEL_TICKERS};
 
 #[tokio::main]
@@ -27,7 +27,7 @@ async fn main() ->Result<(), Box<dyn error::Error>>{
     tx.send(send_str(subscribe(CHANNEL_TICKERS,inst_id).as_str())).await?;
     tx.send(send_str(subscribe(CHANNEL_BOOKS5,inst_id).as_str())).await?;
     let (book_channel_tx,book_channel_rx) = channel::<(Utf8Bytes,String,u8)>(512);
-    spawn(rx_books_spawn(book_channel_rx));
+    spawn(rx_books(book_channel_rx));
     let mut map_inst_id_price = HashMap::<String,String>::new();
     loop {
         let result = rx.next().await;
@@ -87,7 +87,7 @@ async fn main() ->Result<(), Box<dyn error::Error>>{
     Ok(())
 }
 
-pub async fn rx_books_spawn(mut rx: Receiver<(Utf8Bytes,String,u8)>){
+pub async fn rx_books(mut rx: Receiver<(Utf8Bytes,String,u8)>){
         let mut map_book_vec_asks = HashMap::<(String,u64,u64),Vec<u64>>::new();
         let mut map_book_vec_bids = HashMap::<(String,u64,u64),Vec<u64>>::new();
         loop {
@@ -263,7 +263,7 @@ pub async fn rx_books_spawn(mut rx: Receiver<(Utf8Bytes,String,u8)>){
                                                 let orderbook_size = vec[idx];
                                                 output.push_str(&format!(
                                                     "  [{}] Price: {}, Size: {} -> OrderBook[{}-{}][idx:{}] = {}\n",
-                                                    i+1, price_str, size_str, min_p, max_p, idx, orderbook_size
+                                                    i+1, price_str, size_str, min_p, max_p, idx, tick_int_to_price_str(orderbook_size,get_min_sz(&inst_id).unwrap())
                                                 ));
                                                 found = true;
                                                 break;
@@ -294,7 +294,7 @@ pub async fn rx_books_spawn(mut rx: Receiver<(Utf8Bytes,String,u8)>){
                                                 let orderbook_size = vec[idx];
                                                 output.push_str(&format!(
                                                     "  [{}] Price: {}, Size: {} -> OrderBook[{}-{}][idx:{}] = {}\n",
-                                                    i+1, price_str, size_str, min_p, max_p, idx, orderbook_size
+                                                    i+1, price_str, size_str, min_p, max_p, idx, tick_int_to_price_str(orderbook_size,get_min_sz(&inst_id).unwrap())
                                                 ));
                                                 found = true;
                                                 break;
