@@ -21,6 +21,7 @@ use std::ops::Add;
 use std::str::FromStr;
 use tokio_tungstenite::tungstenite::Message::Text;
 use tokio_tungstenite::tungstenite::{Message, Utf8Bytes};
+use uuid::Uuid;
 
 static HTTP_CLIENT: Lazy<Client> = Lazy::new(|| {
     let mut headers = HeaderMap::new();
@@ -292,6 +293,15 @@ pub fn sign(timestamp: &str, method: &str, path: &str, body: &str, secret_key: &
 
     let result = mac.finalize();
     BASE64_STANDARD.encode(result.into_bytes())
+}
+
+
+pub fn get_inst_id_code(inst_id: &str) -> &String {
+    &get_swap_instrument(inst_id).unwrap().inst_id_code
+}
+
+pub fn order_id_str(inst_id: &str,side:&str,price:&str,order_type:&str)-> String {
+    format!("{} {} {} {}",inst_id,side,price,order_type)
 }
 
 #[cfg(test)]

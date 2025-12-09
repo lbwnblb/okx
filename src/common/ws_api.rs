@@ -149,22 +149,66 @@ pub fn login()->String{
    ]
 }).to_string()
 }
-pub fn order()->String{
+// pub fn order()->String{
+//     json!({
+//     "id": "1512",
+//     "op": "order",
+//     "args": [{
+//         "side": "buy",
+//         "instId": "BTC-USDT",
+//         "tdMode": "cash",  // 改为 cash 模式（现货）
+//         "ordType": "limit",  // 限价单更安全
+//         "px": "50000",  // 添加价格
+//         "sz": "0.0001",  // 减小数量避免资金不足
+//         "ccy": "USDT"  // 关键：添加交易币种
+//     }]
+// }
+// ).to_string()
+// }
+
+pub fn order(id: &str, side: &str, inst_id_code: &str, td_mode: &str, ord_type: &str, px: Option<&str>, sz: &str) ->String{
+    let mut arg = json!({
+        "side": side,
+        "instIdCode": inst_id_code,
+        "tdMode": td_mode,
+        "ordType": ord_type,
+        "sz": sz
+    });
+
+    if let Some(price) = px {
+        arg["px"] = json!(price);
+    }
+
     json!({
-    "id": "1512",
-    "op": "order",
-    "args": [{
-        "side": "buy",
-        "instId": "BTC-USDT",
-        "tdMode": "cash",  // 改为 cash 模式（现货）
-        "ordType": "limit",  // 限价单更安全
-        "px": "50000",  // 添加价格
-        "sz": "0.0001",  // 减小数量避免资金不足
-        "ccy": "USDT"  // 关键：添加交易币种
-    }]
+        "id": id,
+        "op": "order",
+        "args": [arg]
+    }).to_string()
 }
-).to_string()
+
+pub struct TdMode;
+impl TdMode {
+    //逐仓
+    pub const ISOLATED: &'static str = "isolated";
+    // 全仓
+    pub const CROSS: &'static str = "cross";
 }
+pub struct  OrderType;
+impl OrderType {
+    pub const LIMIT: &'static str = "limit";
+    pub const MARKET: &'static str = "market";
+}
+pub struct Side;
+impl Side {
+    pub const BUY: &'static str = "buy";
+    pub const SELL: &'static str = "sell";
+}
+pub fn order_market(id: &str, side: &str, inst_id_code: &str,sz: &str)->String{
+    order(id, side, inst_id_code, TdMode::CROSS,OrderType::MARKET, None, sz)
+}
+
+
+
 
 #[cfg(test)]
 mod ws_test{
@@ -179,57 +223,57 @@ mod ws_test{
     use crate::common::utils::{send_str, sign};
     use crate::common::ws_api::{create_ws, order};
 
-    #[tokio::test]
-    async fn test_login(){
-        // create_ws();
-        let web_socket_stream = create_ws(WS_SIMULATION_URL_PRIVATE).await.unwrap();
-        let (mut tx, mut rx) = web_socket_stream.split();
-        let timestamp = OffsetDateTime::now_utc().unix_timestamp();
-        let sign  = sign(timestamp.to_string().as_str(), "GET", "/users/self/verify", "",OKX_SIMULATION_SECRET_KEY.as_str());
-        let x = to_string(&json!({
- "op": "login",
- "args":
-  [
-     {
-       "apiKey": OKX_SIMULATION_API_KEY.as_str(),
-       "passphrase": OK_SIMULATION_ACCESS_PASSPHRASE.as_str(),
-       "timestamp": timestamp,
-       "sign":sign
-      }
-   ]
-}
-)).unwrap();
-let mut logged_in = false;
-let mut order_sent = false;
-        tx.send(Message::Text(Utf8Bytes::from(x))).await.unwrap();
-        loop {
-            let option = rx.next().await;
-            match option {
-                Some(Ok(text)) => {
-                    let msg_str = text.to_string();
-                
-                // 登录成功
-                if !logged_in && msg_str.contains("\"event\":\"login\"") && msg_str.contains("\"code\":\"0\"") {
-                    println!("✅ Login successful");
-                    logged_in = true;
-                    println!("Sending order...");
-                    tx.send(send_str(order().as_str())).await.unwrap();
-                    order_sent = true;
-                }
-                // 下单响应
-                else if order_sent && msg_str.contains("\"op\":\"order\"") {
-                    println!("📦 Order response: {}", msg_str);
-                    break;
-                }
-                }
-                Some(Err(e)) => {
-                    println!("Error: {:?}", e);
-                }
-                None => {
-                    println!("WebSocket connection closed.");
-                    break;
-                }
-            }
-        }
-    }
+//     #[tokio::test]
+//     async fn test_login(){
+//         // create_ws();
+//         let web_socket_stream = create_ws(WS_SIMULATION_URL_PRIVATE).await.unwrap();
+//         let (mut tx, mut rx) = web_socket_stream.split();
+//         let timestamp = OffsetDateTime::now_utc().unix_timestamp();
+//         let sign  = sign(timestamp.to_string().as_str(), "GET", "/users/self/verify", "",OKX_SIMULATION_SECRET_KEY.as_str());
+//         let x = to_string(&json!({
+//  "op": "login",
+//  "args":
+//   [
+//      {
+//        "apiKey": OKX_SIMULATION_API_KEY.as_str(),
+//        "passphrase": OK_SIMULATION_ACCESS_PASSPHRASE.as_str(),
+//        "timestamp": timestamp,
+//        "sign":sign
+//       }
+//    ]
+// }
+// )).unwrap();
+// let mut logged_in = false;
+// let mut order_sent = false;
+//         tx.send(Message::Text(Utf8Bytes::from(x))).await.unwrap();
+//         loop {
+//             let option = rx.next().await;
+//             match option {
+//                 Some(Ok(text)) => {
+//                     let msg_str = text.to_string();
+//
+//                 // 登录成功
+//                 if !logged_in && msg_str.contains("\"event\":\"login\"") && msg_str.contains("\"code\":\"0\"") {
+//                     println!("✅ Login successful");
+//                     logged_in = true;
+//                     println!("Sending order...");
+//                     tx.send(send_str(order().as_str())).await.unwrap();
+//                     order_sent = true;
+//                 }
+//                 // 下单响应
+//                 else if order_sent && msg_str.contains("\"op\":\"order\"") {
+//                     println!("📦 Order response: {}", msg_str);
+//                     break;
+//                 }
+//                 }
+//                 Some(Err(e)) => {
+//                     println!("Error: {:?}", e);
+//                 }
+//                 None => {
+//                     println!("WebSocket connection closed.");
+//                     break;
+//                 }
+//             }
+//         }
+//     }
 }

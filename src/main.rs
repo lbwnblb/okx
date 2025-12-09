@@ -3,91 +3,26 @@ use std::error;
 use std::fs::File;
 use std::sync::RwLock;
 use futures::{SinkExt, StreamExt};
+use futures::stream::{SplitSink, SplitStream};
 use log::{error, info};
 use serde::de::Unexpected::Option;
 use sonic_rs::{from_str, JsonValueTrait};
 use sonic_rs::writer::BufferedWriter;
+use tokio::net::TcpStream;
 use tokio::spawn;
 use tokio::sync::mpsc::{channel, unbounded_channel, Receiver};
 use tokio::sync::mpsc::error::{SendError, TrySendError};
 use tokio_tungstenite::tungstenite::Message::Text;
 use tokio_tungstenite::tungstenite::{Bytes, Error, Message, Utf8Bytes};
-use okx::common::config::{get_ws_public};
+use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
+use okx::common::config::{get_ws_private, get_ws_public};
 use okx::common::rest_api::instruments;
-use okx::common::utils::{get_min_sz, get_sz, log_init, price_to_tick_int_str, send_str, tick_int_to_price_str};
-use okx::common::ws_api::{create_ws, login, order, subscribe, BookData, Books, Books5, OkxMessage, Ticker, TickerData, CHANNEL_BOOKS, CHANNEL_BOOKS5, CHANNEL_TICKERS};
+use okx::common::utils::{get_inst_id_code, get_min_sz, get_sz, log_init, order_id_str, price_to_tick_int_str, send_str, tick_int_to_price_str};
+use okx::common::ws_api::{create_ws, login, order, order_market, subscribe, BookData, Books, Books5, OkxMessage, OrderType, Side, Ticker, TickerData, CHANNEL_BOOKS, CHANNEL_BOOKS5, CHANNEL_TICKERS};
 
-#[tokio::main]
-async fn main() ->Result<(), Box<dyn error::Error>>{
-    log_init();
-    let ws = create_ws(get_ws_public()).await?;
-    let inst_id = "ETH-USDT-SWAP";
-    let (mut tx, mut rx) = ws.split();
-    tx.send(send_str(subscribe(CHANNEL_BOOKS,inst_id ).as_str())).await?;
-    tx.send(send_str(subscribe(CHANNEL_TICKERS,inst_id).as_str())).await?;
-    tx.send(send_str(subscribe(CHANNEL_BOOKS5,inst_id).as_str())).await?;
-    let (book_channel_tx,book_channel_rx) = channel::<(Utf8Bytes,String,u8)>(512);
-    spawn(rx_books(book_channel_rx));
-    let mut map_inst_id_price = HashMap::<String,String>::new();
-    loop {
-        let result = rx.next().await;
-        match result {
-            None => {
-                break;
-            }
-            Some(result) => {
-                match result {
-                    Ok(message) => {
-                        match message {
-                            Text(text) => {
-                                let result = from_str::<OkxMessage>(&text);
-                                if let Ok (result) = result{
-                                    if let Some(event) = result.event {
-                                        info!("event {}", event);
-                                        continue;
-                                    }
-                                    if let Some(args) = result.arg {
-                                        match args.channel.as_str() {
-                                            CHANNEL_BOOKS => {
-                                                // let books = from_str::<Books>(&text).unwrap();
-                                                if book_channel_tx.send((text,args.inst_id.clone(),0)).await.is_err() {
-                                                    error!("book channel closed");
-                                                    break;
-                                                }
-                                            }
-                                            CHANNEL_BOOKS5=>{
-
-                                                if book_channel_tx.send((text,args.inst_id.clone(),1)).await.is_err(){
-                                                    error!("book channel closed");
-                                                    break;
-                                                };
-                                            }
-                                            CHANNEL_TICKERS=>{
-                                                let ticker = from_str::<Ticker>(&text).unwrap();
-                                                for tick_data in ticker.data {
-                                                    map_inst_id_price.insert(tick_data.inst_id,tick_data.last);
-                                                }
-                                            }
-                                            _ => {}
-                                        }
-                                    }
-
-                                }
-                            }
-                            _ => {}
-                        }
-                    }
-                    Err(error) => {
-                        error!("{}", error)
-                    }
-                }
-            }
-        }
-    }
-    Ok(())
-}
-
-pub async fn rx_books(mut rx: Receiver<(Utf8Bytes,String,u8)>){
+pub struct TaskFn;
+impl TaskFn {
+    pub async fn rx_books(mut rx: Receiver<(Utf8Bytes,String,u8)>){
         let mut map_book_vec_asks = HashMap::<(String,u64,u64),Vec<u64>>::new();
         let mut map_book_vec_bids = HashMap::<(String,u64,u64),Vec<u64>>::new();
         loop {
@@ -248,7 +183,7 @@ pub async fn rx_books(mut rx: Receiver<(Utf8Bytes,String,u8)>){
                             let books5 = from_str::<Books5>(&b).unwrap();
                             for book_data in books5.data {
                                 let mut output = format!("========== BOOKS5: {} ==========\n", inst_id);
-                                
+
                                 // 处理 Asks
                                 output.push_str("Asks:\n");
                                 for (i, ask) in book_data.asks.iter().enumerate() {
@@ -256,7 +191,7 @@ pub async fn rx_books(mut rx: Receiver<(Utf8Bytes,String,u8)>){
                                         let price_str = &ask[0];
                                         let size_str = &ask[1];
                                         let price_tick = price_to_tick_int_str(price_str,sz);
-                                        
+
                                         // 查找价格对应的 orderbook 下标
                                         let mut found = false;
                                         for ((map_inst, min_p, max_p), vec) in &map_book_vec_asks {
@@ -279,7 +214,7 @@ pub async fn rx_books(mut rx: Receiver<(Utf8Bytes,String,u8)>){
                                         }
                                     }
                                 }
-                                
+
                                 // 处理 Bids
                                 output.push_str("Bids:\n");
                                 for (i, bid) in book_data.bids.iter().enumerate() {
@@ -287,7 +222,7 @@ pub async fn rx_books(mut rx: Receiver<(Utf8Bytes,String,u8)>){
                                         let price_str = &bid[0];
                                         let size_str = &bid[1];
                                         let price_tick = price_to_tick_int_str(price_str,sz);
-                                        
+
                                         // 查找价格对应的 orderbook 下标
                                         let mut found = false;
                                         for ((map_inst, min_p, max_p), vec) in &map_book_vec_bids {
@@ -310,7 +245,7 @@ pub async fn rx_books(mut rx: Receiver<(Utf8Bytes,String,u8)>){
                                         }
                                     }
                                 }
-                                
+
                                 output.push_str("======================================");
                                 info!("{}", output);
                             }
@@ -324,7 +259,105 @@ pub async fn rx_books(mut rx: Receiver<(Utf8Bytes,String,u8)>){
                 }
             }
         }
+    }
+    pub async fn rx_order(mut rx:Receiver<String>, mut tx_ws: SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>){
+        while let Some(b) = rx.recv().await {
+            if let Err( e) = tx_ws.send(send_str(&b)).await{
+                error!("发送失败 {} {}",b,e);
+            }
+        }
+    }
+    pub async fn rx_ws_order(mut rx_order_ws: SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>){
+        while let Some(b) = rx_order_ws.next().await {
+            match b {
+                Ok(Text(s)) => {
+                    info!("{}",s.as_str());
+                },
+                _ => {}
+            }
+        }
+    }
 }
+
+#[tokio::main]
+async fn main() ->Result<(), Box<dyn error::Error>>{
+    log_init();
+    let ws = create_ws(get_ws_public()).await?;
+
+    let ws_order = create_ws(get_ws_private()).await?;
+    let (mut tx_order_ws, rx_order_ws) = ws_order.split();
+    tx_order_ws.send(send_str(&login())).await.unwrap();
+    let inst_id = "ETH-USDT-SWAP";
+    let (mut tx, mut rx) = ws.split();
+    tx.send(send_str(subscribe(CHANNEL_BOOKS,inst_id ).as_str())).await?;
+    tx.send(send_str(subscribe(CHANNEL_TICKERS,inst_id).as_str())).await?;
+    tx.send(send_str(subscribe(CHANNEL_BOOKS5,inst_id).as_str())).await?;
+    let (book_channel_tx,book_channel_rx) = channel::<(Utf8Bytes,String,u8)>(512);
+    let (tx_order_channel,rx_order_channel) = channel::<(String)>(512);
+    spawn(TaskFn::rx_books(book_channel_rx));
+    spawn(TaskFn::rx_order(rx_order_channel,tx_order_ws));
+    spawn(TaskFn::rx_ws_order(rx_order_ws));
+
+
+    loop {
+        let result = rx.next().await;
+        match result {
+            None => {
+                break;
+            }
+            Some(result) => {
+                match result {
+                    Ok(message) => {
+                        match message {
+                            Text(text) => {
+                                let result = from_str::<OkxMessage>(&text);
+                                if let Ok (result) = result{
+                                    if let Some(event) = result.event {
+                                        info!("event {}", event);
+                                        continue;
+                                    }
+                                    if let Some(args) = result.arg {
+                                        match args.channel.as_str() {
+                                            CHANNEL_BOOKS => {
+                                                // let books = from_str::<Books>(&text).unwrap();
+                                                if book_channel_tx.send((text,args.inst_id.clone(),0)).await.is_err() {
+                                                    error!("book channel closed");
+                                                    break;
+                                                }
+                                            }
+                                            CHANNEL_BOOKS5=>{
+                                                if book_channel_tx.send((text,args.inst_id.clone(),1)).await.is_err(){
+                                                    error!("book channel closed");
+                                                    break;
+                                                };
+                                            }
+                                            CHANNEL_TICKERS=>{
+                                                let ticker = from_str::<Ticker>(&text).unwrap();
+                                                let order_id = order_id_str(&inst_id,Side::BUY,&ticker.data.first().unwrap().last,OrderType::MARKET);
+                                                let market_order = order_market(&order_id, Side::BUY, get_inst_id_code(inst_id), "1");
+                                                info!("{}",market_order);
+                                                tx_order_channel.send(market_order).await.unwrap();
+                                                break;
+                                            }
+                                            _ => {}
+                                        }
+                                    }
+
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                    Err(error) => {
+                        error!("{}", error)
+                    }
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
 
 fn as_bs_to_pv(inst_id: &String, vec_str: Vec<String>,sz:&str) -> (u64, u64) {
     let price_str = vec_str.get(0).unwrap();
