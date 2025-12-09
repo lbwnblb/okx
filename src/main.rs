@@ -32,6 +32,7 @@ async fn main() ->Result<(), Box<dyn error::Error>>{
         let result = rx.next().await;
         match result {
             None => {
+                break;
             }
             Some(result) => {
                 match result {
@@ -48,7 +49,10 @@ async fn main() ->Result<(), Box<dyn error::Error>>{
                                         match args.channel.as_str() {
                                             CHANNEL_BOOKS => {
                                                 let books = from_str::<Books>(&text).unwrap();
-                                                book_channel_tx.send((books,args.inst_id.clone(),match map_inst_id_price.get(&args.inst_id) { Some(o)=>{o.clone()},None=>"0".to_string()})).await.unwrap();
+                                                if book_channel_tx.send((books,args.inst_id.clone(),match map_inst_id_price.get(&args.inst_id) { Some(o)=>{o.clone()},None=>"0".to_string()})).await.is_err() {
+                                                    error!("book channel closed");
+                                                    break;
+                                                }
                                             }
                                             CHANNEL_TICKERS=>{
                                                 let ticker = from_str::<Ticker>(&text).unwrap();
@@ -72,6 +76,7 @@ async fn main() ->Result<(), Box<dyn error::Error>>{
             }
         }
     }
+    Ok(())
 }
 
 pub async fn rx_books_spawn(mut rx: Receiver<(Books,String,String)>){
@@ -125,8 +130,8 @@ pub async fn rx_books_spawn(mut rx: Receiver<(Books,String,String)>){
                                                 if interval > 1000 {
                                                     continue
                                                 }
-                                                flag_min = flag_min-1000;
                                                 flag_max = flag_min-1;
+                                                flag_min = flag_min-1000;
                                                 let mut insert_vec = vec![0u64; 1000];
                                                 insert_vec[(p-flag_min) as usize] = *v;
                                                 map_book_vec.insert((inst_id.clone(),flag_min,flag_max),insert_vec);
@@ -136,8 +141,8 @@ pub async fn rx_books_spawn(mut rx: Receiver<(Books,String,String)>){
                                                 if interval > 1000 {
                                                     continue
                                                 }
-                                                flag_max = flag_max+1000;
                                                 flag_min = flag_max+1;
+                                                flag_max = flag_max+1000;
                                                 let mut insert_vec = vec![0u64; 1000];
                                                 insert_vec[(p-flag_min) as usize] = *v;
                                                 map_book_vec.insert((inst_id.clone(),flag_min,flag_max),insert_vec);
@@ -146,7 +151,7 @@ pub async fn rx_books_spawn(mut rx: Receiver<(Books,String,String)>){
                                         }
                                         Some((i,m_p,mi_p)) => {
                                             if let Some(vec) = map_book_vec.get_mut(&(i,m_p,mi_p)) {
-                                                vec[(p-mi_p)as usize] = *v;
+                                                vec[(p-m_p)as usize] = *v;
                                             }
                                         }
                                     }
