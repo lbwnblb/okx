@@ -58,20 +58,21 @@ async fn main() ->Result<(), Box<dyn error::Error>>{
                                             CHANNEL_BOOKS5=>{
                                                 let books5 = from_str::<Books5>(&text).unwrap();
                                                 for book_data in books5.data {
-                                                    info!("========== BOOKS5: {} ==========", args.inst_id);
-                                                    info!("Asks (卖单):");
+                                                    let mut output = format!("========== BOOKS5: {} ==========\n", args.inst_id);
+                                                    output.push_str("Asks (卖单):\n");
                                                     for (i, ask) in book_data.asks.iter().enumerate() {
                                                         if ask.len() >= 2 {
-                                                            info!("  [{}] Price: {}, Size: {}", i+1, ask[0], ask[1]);
+                                                            output.push_str(&format!("  [{}] Price: {}, Size: {}\n", i+1, ask[0], ask[1]));
                                                         }
                                                     }
-                                                    info!("Bids (买单):");
+                                                    output.push_str("Bids (买单):\n");
                                                     for (i, bid) in book_data.bids.iter().enumerate() {
                                                         if bid.len() >= 2 {
-                                                            info!("  [{}] Price: {}, Size: {}", i+1, bid[0], bid[1]);
+                                                            output.push_str(&format!("  [{}] Price: {}, Size: {}\n", i+1, bid[0], bid[1]));
                                                         }
                                                     }
-                                                    info!("======================================");
+                                                    output.push_str("======================================");
+                                                    info!("{}", output);
                                                 }
                                             }
                                             CHANNEL_TICKERS=>{
@@ -309,12 +310,16 @@ fn print_orderbook(
         }
     }
     bids_list.sort_by_key(|(price, _)| std::cmp::Reverse(*price));
-    bids_list.iter().take(5).for_each(|(price, sz)| {
-        info!("bids price {price} sz {sz}")
-    });
-    asks_list.iter().take(5).for_each(|(price, sz)| {
-        info!("asks price {price} sz {sz}")
-    });
+    let mut output = String::new();
+    for (price, sz) in bids_list.iter().take(5) {
+        output.push_str(&format!("bids price {price} sz {sz}\n"));
+    }
+    for (price, sz) in asks_list.iter().take(5) {
+        output.push_str(&format!("asks price {price} sz {sz}\n"));
+    }
+    if !output.is_empty() {
+        info!("{}", output.trim_end());
+    }
     
     info!("====================================\n");
 }
