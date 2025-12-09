@@ -93,6 +93,8 @@ pub async fn rx_books(mut rx: Receiver<(Utf8Bytes,String,u8)>){
         loop {
             match rx.recv().await {
                 Some((b,inst_id,task_id)) => {
+                    let min_sz = get_min_sz(&inst_id).unwrap();
+                    let sz = get_sz(&inst_id).unwrap();
                     match task_id {
                         0 => {
                             let b = from_str::<Books>(&b).unwrap();
@@ -101,7 +103,7 @@ pub async fn rx_books(mut rx: Receiver<(Utf8Bytes,String,u8)>){
                                 "snapshot" => {
                                     for b_d in b.data.into_iter() {
                                         // 处理 asks
-                                        let vec_asks = b_d.asks.into_iter().map(|vec_str| as_bs_to_pv(&inst_id, vec_str)).collect::<Vec<(u64, u64)>>();
+                                        let vec_asks = b_d.asks.into_iter().map(|vec_str| as_bs_to_pv(&inst_id, vec_str,sz)).collect::<Vec<(u64, u64)>>();
                                         let max_price = vec_asks.iter().map(|(price, _)| { price }).max().unwrap();
                                         let min_price = vec_asks.iter().map(|(price, _)| { price }).min().unwrap();
                                         let interval = max_price - min_price;
@@ -112,7 +114,7 @@ pub async fn rx_books(mut rx: Receiver<(Utf8Bytes,String,u8)>){
                                         map_book_vec_asks.insert((inst_id.clone(),min_price.clone(),max_price.clone()),vec_price);
 
                                         // 处理 bids
-                                        let vec_bids = b_d.bids.into_iter().map(|vec_str| as_bs_to_pv(&inst_id, vec_str)).collect::<Vec<(u64, u64)>>();
+                                        let vec_bids = b_d.bids.into_iter().map(|vec_str| as_bs_to_pv(&inst_id, vec_str,sz)).collect::<Vec<(u64, u64)>>();
                                         let max_price = vec_bids.iter().map(|(price, _)| { price }).max().unwrap();
                                         let min_price = vec_bids.iter().map(|(price, _)| { price }).min().unwrap();
                                         let interval = max_price - min_price;
@@ -127,7 +129,7 @@ pub async fn rx_books(mut rx: Receiver<(Utf8Bytes,String,u8)>){
                                 "update" =>{
                                     for b_d in b.data.into_iter() {
                                         // 处理 asks 更新
-                                        let asks_p_v = b_d.asks.into_iter().map(|vec_str| as_bs_to_pv(&inst_id, vec_str)).collect::<Vec<(u64, u64)>>();
+                                        let asks_p_v = b_d.asks.into_iter().map(|vec_str| as_bs_to_pv(&inst_id, vec_str,sz)).collect::<Vec<(u64, u64)>>();
                                         let mut keys = map_book_vec_asks.keys().cloned().collect::<Vec<(String, u64, u64)>>();
 
                                         for (p,v) in asks_p_v.iter() {
@@ -183,7 +185,7 @@ pub async fn rx_books(mut rx: Receiver<(Utf8Bytes,String,u8)>){
                                         }
 
                                         // 处理 bids 更新
-                                        let bids_p_v = b_d.bids.into_iter().map(|vec_str| as_bs_to_pv(&inst_id, vec_str)).collect::<Vec<(u64, u64)>>();
+                                        let bids_p_v = b_d.bids.into_iter().map(|vec_str| as_bs_to_pv(&inst_id, vec_str,sz)).collect::<Vec<(u64, u64)>>();
                                         let mut keys = map_book_vec_bids.keys().cloned().collect::<Vec<(String, u64, u64)>>();
 
                                         for (p,v) in bids_p_v.iter() {
@@ -253,7 +255,7 @@ pub async fn rx_books(mut rx: Receiver<(Utf8Bytes,String,u8)>){
                                     if ask.len() >= 2 {
                                         let price_str = &ask[0];
                                         let size_str = &ask[1];
-                                        let price_tick = price_to_tick_int_str(price_str, get_sz(&inst_id).unwrap());
+                                        let price_tick = price_to_tick_int_str(price_str,sz);
                                         
                                         // 查找价格对应的 orderbook 下标
                                         let mut found = false;
@@ -263,7 +265,7 @@ pub async fn rx_books(mut rx: Receiver<(Utf8Bytes,String,u8)>){
                                                 let orderbook_size = vec[idx];
                                                 output.push_str(&format!(
                                                     "  [{}] Price: {}, Size: {} -> OrderBook[{}-{}][idx:{}] = {}\n",
-                                                    i+1, price_str, size_str, min_p, max_p, idx, tick_int_to_price_str(orderbook_size,get_min_sz(&inst_id).unwrap())
+                                                    i+1, price_str, size_str, min_p, max_p, idx, tick_int_to_price_str(orderbook_size,min_sz)
                                                 ));
                                                 found = true;
                                                 break;
@@ -284,7 +286,7 @@ pub async fn rx_books(mut rx: Receiver<(Utf8Bytes,String,u8)>){
                                     if bid.len() >= 2 {
                                         let price_str = &bid[0];
                                         let size_str = &bid[1];
-                                        let price_tick = price_to_tick_int_str(price_str, get_sz(&inst_id).unwrap());
+                                        let price_tick = price_to_tick_int_str(price_str,sz);
                                         
                                         // 查找价格对应的 orderbook 下标
                                         let mut found = false;
@@ -294,7 +296,7 @@ pub async fn rx_books(mut rx: Receiver<(Utf8Bytes,String,u8)>){
                                                 let orderbook_size = vec[idx];
                                                 output.push_str(&format!(
                                                     "  [{}] Price: {}, Size: {} -> OrderBook[{}-{}][idx:{}] = {}\n",
-                                                    i+1, price_str, size_str, min_p, max_p, idx, tick_int_to_price_str(orderbook_size,get_min_sz(&inst_id).unwrap())
+                                                    i+1, price_str, size_str, min_p, max_p, idx, tick_int_to_price_str(orderbook_size,min_sz)
                                                 ));
                                                 found = true;
                                                 break;
@@ -324,11 +326,11 @@ pub async fn rx_books(mut rx: Receiver<(Utf8Bytes,String,u8)>){
         }
 }
 
-fn as_bs_to_pv(inst_id: &String, vec_str: Vec<String>) -> (u64, u64) {
+fn as_bs_to_pv(inst_id: &String, vec_str: Vec<String>,sz:&str) -> (u64, u64) {
     let price_str = vec_str.get(0).unwrap();
     let sz_str = vec_str.get(1).unwrap();
-    let price = price_to_tick_int_str(price_str, get_sz(&inst_id).unwrap());
-    let sz = price_to_tick_int_str(sz_str, get_min_sz(&inst_id).unwrap());
+    let price = price_to_tick_int_str(price_str, sz);
+    let sz = price_to_tick_int_str(sz_str, sz);
     // info!("as_bs_to_pv: price_str={}, sz_str={} -> price={}, sz={}", price_str, sz_str, price, sz);
     (price, sz)
 }
