@@ -66,7 +66,7 @@ pub struct BookData {
 #[derive(Debug, Deserialize)]
 pub struct Books5 {
     #[serde(rename = "action")]
-    pub action: String,
+    pub action: Option<String>,
     #[serde(rename = "data")]
     pub data: Vec<Book5Data>,
 }
@@ -78,8 +78,12 @@ pub struct Book5Data {
     pub asks: Vec<Vec<String>>,
     #[serde(rename = "bids")]
     pub bids: Vec<Vec<String>>,
+    #[serde(rename = "instId")]
+    pub inst_id: String,
     #[serde(rename = "ts")]
     pub ts: String,
+    #[serde(rename = "seqId")]
+    pub seq_id: i64,
 }
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")] // 自动把 JSON 的驼峰(lastSz)转为 Rust 的蛇形(last_sz)
