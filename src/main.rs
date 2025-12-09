@@ -139,7 +139,7 @@ pub async fn rx_books_spawn(mut rx: Receiver<(Books,String,String)>){
                                     }
                                     match key {
                                         None => {
-                                            if flag_min != 0 {
+                                            if flag_min != 0 && *p < flag_min {
                                                 let interval = flag_min-p;
                                                 if interval > 1000 {
                                                     continue
@@ -150,7 +150,7 @@ pub async fn rx_books_spawn(mut rx: Receiver<(Books,String,String)>){
                                                 insert_vec[(p-flag_min) as usize] = *v;
                                                 map_book_vec_asks.insert((inst_id.clone(),flag_min,flag_max),insert_vec);
                                             }
-                                            if flag_max != 0 {
+                                            if flag_max != 0 && *p > flag_max {
                                                 let interval = p-flag_max;
                                                 if interval > 1000 {
                                                     continue
