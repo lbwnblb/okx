@@ -310,13 +310,13 @@ fn print_orderbook(
     }
     bids_list.sort_by_key(|(price, _)| std::cmp::Reverse(*price));
     bids_list.iter().take(5).for_each(|(price, sz)| {
-        println!("bids price {price} sz {sz}")
+        info!("bids price {price} sz {sz}")
     });
     asks_list.iter().take(5).for_each(|(price, sz)| {
-        println!("asks price {price} sz {sz}")
+        info!("asks price {price} sz {sz}")
     });
     
-    println!("====================================\n");
+    info!("====================================\n");
 }
 #[cfg(test)]
 mod test{
