@@ -247,9 +247,6 @@ pub async fn rx_books_spawn(mut rx: Receiver<(Books,String,String)>){
                                         }
                                     }
                                 }
-                                
-                                // 打印前20档orderbook
-                                print_orderbook(&inst_id, &map_book_vec_asks, &map_book_vec_bids);
                             }
                         }
                         _ => {}
@@ -267,66 +264,13 @@ fn as_bs_to_pv(inst_id: &String, vec_str: Vec<String>) -> (u64, u64) {
     let sz_str = vec_str.get(1).unwrap();
     let price = price_to_tick_int_str(price_str, get_sz(&inst_id).unwrap());
     let sz = price_to_tick_int_str(sz_str, get_min_sz(&inst_id).unwrap());
+    // info!("as_bs_to_pv: price_str={}, sz_str={} -> price={}, sz={}", price_str, sz_str, price, sz);
     (price, sz)
 }
 
-fn tick_int_to_price(tick_int: u64, tick_size: &str) -> f64 {
-    if !tick_size.contains(".") {
-        return tick_int as f64;
-    }
-    let tick_size_split: Vec<&str> = tick_size.split('.').collect();
-    let decimal_places = tick_size_split[1].len();
-    tick_int as f64 / 10f64.powi(decimal_places as i32)
-}
 
-fn print_orderbook(
-    inst_id: &str,
-    map_book_vec_asks: &HashMap<(String, u64, u64), Vec<u64>>,
-    map_book_vec_bids: &HashMap<(String, u64, u64), Vec<u64>>,
-) {
-    let tick_size = get_sz(inst_id).unwrap();
-    let min_sz = get_min_sz(inst_id).unwrap();
-    
-    // 收集所有 asks
-    let mut asks_list: Vec<(u64, u64)> = Vec::new();
-    for ((i, min_price, _max_price), vec) in map_book_vec_asks {
-        if i == inst_id {
-            for (idx, &sz) in vec.iter().enumerate() {
-                if sz > 0 {
-                    let price = min_price + idx as u64;
-                    asks_list.push((price, sz));
-                }
-            }
-        }
-    }
-    asks_list.sort_by_key(|(price, _)| *price);
-    
-    // 收集所有 bids
-    let mut bids_list: Vec<(u64, u64)> = Vec::new();
-    for ((i, min_price, _max_price), vec) in map_book_vec_bids {
-        if i == inst_id {
-            for (idx, &sz) in vec.iter().enumerate() {
-                if sz > 0 {
-                    let price = min_price + idx as u64;
-                    bids_list.push((price, sz));
-                }
-            }
-        }
-    }
-    bids_list.sort_by_key(|(price, _)| std::cmp::Reverse(*price));
-    let mut output = String::new();
-    for (price, sz) in bids_list.iter().take(5) {
-        output.push_str(&format!("bids price {price} sz {sz}\n"));
-    }
-    for (price, sz) in asks_list.iter().take(5) {
-        output.push_str(&format!("asks price {price} sz {sz}\n"));
-    }
-    if !output.is_empty() {
-        info!("{}", output.trim_end());
-    }
-    
-    info!("====================================\n");
-}
+
+
 #[cfg(test)]
 mod test{
     use std::fs::File;
