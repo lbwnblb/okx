@@ -76,30 +76,13 @@ async fn main() ->Result<(), Box<dyn error::Error>>{
 }
 
 pub async fn rx_books_spawn(mut rx: Receiver<(Books,String,String)>){
-        // let map_books: = BTreeMap::new();
         let mut map_book_vec = HashMap::<(String,u64,u64),Vec<u64>>::new();
-
         loop {
             match rx.recv().await {
                 Some((b,inst_id,p)) => {
                     // 消息的动作类型，例如 "snapshot" 或 "update"。
                     match b.action.as_str() {
                         "snapshot" => {
-                            // let vec_asks = book_data.asks.into_iter().map(|vec_str| (price_to_tick_int_str(vec_str.get(0).unwrap(), get_sz(inst_id).unwrap()),price_to_tick_int_str(vec_str.get(1).unwrap(), get_min_sz(inst_id).unwrap()))).collect::<Vec<(u64,u64)>>();
-                            // // let vec_bids = book_data.bids;
-                            // let max_price = vec_asks.iter().map(|(price, _)| { price }).max().unwrap();
-                            // let min_price = vec_asks.iter().map(|(price, _)| { price }).min().unwrap();
-                            // let sub_price = max_price - min_price;
-                            // println!("max_price: {}, min_price: {}, sub_price: {}", max_price, min_price, sub_price);
-                            // let mut vec_price_v = vec![0u64;(sub_price+1) as usize];
-                            // println!("{}", vec_price_v.len());
-                            // println!("{}",max_price-min_price);
-                            // vec_asks.iter().for_each(|(price,sz)| {
-                            //     println!("index: {},price:{} min_price:{} sz: {}", price-min_price, price,min_price, sz);
-                            //     vec_price_v[(price-min_price) as usize] = *sz;
-                            // });
-                            //
-                            // map_book_vec.insert(("BTC-USDT-SWAP".to_string(),min_price.clone(),max_price.clone()),vec_price_v);
                             for b_d in b.data.into_iter() {
                                 let vec_asks = b_d.asks.into_iter().map(|vec_str| as_bs_to_pv(&inst_id, vec_str)).collect::<Vec<(u64, u64)>>();
                                 let max_price = vec_asks.iter().map(|(price, _)| { price }).max().unwrap();
@@ -116,22 +99,10 @@ pub async fn rx_books_spawn(mut rx: Receiver<(Books,String,String)>){
                         "update" =>{
                             for b_d in b.data.into_iter() {
                                 let asks_p_v = b_d.asks.into_iter().map(|vec_str| as_bs_to_pv(&inst_id, vec_str)).collect::<Vec<(u64, u64)>>();
-                                // for (inst_id_for,min_price,max_price) in map_book_vec.keys() {
-                                //     for (p,v) in asks_p_v.iter() {
-                                //         if !inst_id.eq(inst_id_for) {
-                                //             break
-                                //         }
-                                //         if  min_price <= p && p <= max_price  {
-                                //
-                                //         }
-                                //     }
-                                //
-                                // }
-                                let keys = map_book_vec.keys().cloned().collect::<Vec<(String,u64,u64)>>();
+                                let mut keys = map_book_vec.keys().cloned().collect::<Vec<(String, u64, u64)>>();
                                 let mut flag_min = 0u64;
                                 let mut flag_max = 0u64;
                                 for (p,v) in asks_p_v.iter() {
-                                // keys.for_each(|(inst_id_for,min_price,max_price)| {
                                     let mut key = None;
                                     for (inst_id_for,min_price,max_price) in &keys{
                                         if !inst_id.eq(inst_id_for) {
@@ -147,7 +118,6 @@ pub async fn rx_books_spawn(mut rx: Receiver<(Books,String,String)>){
                                             flag_max = max_price.clone();
                                         }
                                     }
-                                // });
                                     match key {
                                         None => {
                                             if flag_min != 0 {
@@ -155,15 +125,24 @@ pub async fn rx_books_spawn(mut rx: Receiver<(Books,String,String)>){
                                                 if interval > 1000 {
                                                     continue
                                                 }
-                                                map_book_vec.insert((inst_id.clone(),flag_min-1000,flag_min.clone()-1),vec![0u64;1000]);
+                                                flag_min = flag_min-1000;
+                                                flag_max = flag_min-1;
+                                                let mut insert_vec = vec![0u64; 1000];
+                                                insert_vec[(p-flag_min) as usize] = *v;
+                                                map_book_vec.insert((inst_id.clone(),flag_min,flag_max),insert_vec);
                                             }
                                             if flag_max != 0 {
                                                 let interval = p-flag_max;
                                                 if interval > 1000 {
                                                     continue
                                                 }
-                                                map_book_vec.insert((inst_id.clone(),flag_max+1,flag_max+1000),vec![0u64;1000]);
+                                                flag_max = flag_max+1000;
+                                                flag_min = flag_max+1;
+                                                let mut insert_vec = vec![0u64; 1000];
+                                                insert_vec[(p-flag_min) as usize] = *v;
+                                                map_book_vec.insert((inst_id.clone(),flag_min,flag_max),insert_vec);
                                             }
+                                            keys = map_book_vec.keys().cloned().collect::<Vec<(String,u64,u64)>>();
                                         }
                                         Some((i,m_p,mi_p)) => {
                                             if let Some(vec) = map_book_vec.get_mut(&(i,m_p,mi_p)) {
