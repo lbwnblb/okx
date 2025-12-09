@@ -194,7 +194,7 @@ pub fn price_to_tick_int_str(price: &str, tick_size: &str) -> u64 {
     }
     if !price.contains(".") && tick_size.contains(".") {
         let tick_size_sp: Vec<&str> = tick_size.split(".").collect();
-        return u64::from_str(format!("{}{}", price,tick_size_sp[1]).as_str()).unwrap()
+        return u64::from_str(format!("{}{}", price,tick_size_sp[1]).as_str().replace("1","0").as_str()).unwrap()
     }
 
     let price_split: Vec<&str> = price.split('.').collect();
@@ -227,6 +227,19 @@ pub fn price_to_tick_int_str(price: &str, tick_size: &str) -> u64 {
     let result = u64::from_str(&price_split_0.add(price_split_1.as_ref())).unwrap();
     result
 }
+
+#[cfg(test)]
+mod test_p {
+    use super::*;
+    #[test]
+    fn test_price_to_tick_int_str() {
+        let inst_id = "BTC-USDT-SWAP";
+        let min_sz = get_min_sz(inst_id).unwrap();
+        let int_str = price_to_tick_int_str("0", min_sz);
+        println!("{}", int_str);
+    }
+}
+
 /// 返回类似 "2020-12-08T09:08:57.715Z" 的 UTC 时间字符串
 pub fn utc_now_iso() -> String {
     // 获取当前 UTC 时间，精度到毫秒
