@@ -55,7 +55,6 @@ async fn main() ->Result<(), Box<dyn error::Error>>{
                                                 for tick_data in ticker.data {
                                                     map_inst_id_price.insert(tick_data.inst_id,tick_data.last);
                                                 }
-
                                             }
                                             _ => {}
                                         }
@@ -100,10 +99,11 @@ pub async fn rx_books_spawn(mut rx: Receiver<(Books,String,String)>){
                             for b_d in b.data.into_iter() {
                                 let asks_p_v = b_d.asks.into_iter().map(|vec_str| as_bs_to_pv(&inst_id, vec_str)).collect::<Vec<(u64, u64)>>();
                                 let mut keys = map_book_vec.keys().cloned().collect::<Vec<(String, u64, u64)>>();
-                                let mut flag_min = 0u64;
-                                let mut flag_max = 0u64;
+
                                 for (p,v) in asks_p_v.iter() {
                                     let mut key = None;
+                                    let mut flag_min = 0u64;
+                                    let mut flag_max = 0u64;
                                     for (inst_id_for,min_price,max_price) in &keys{
                                         if !inst_id.eq(inst_id_for) {
                                             continue
