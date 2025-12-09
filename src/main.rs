@@ -262,7 +262,7 @@ fn print_orderbook(
     let tick_size = get_sz(inst_id).unwrap();
     let min_sz = get_min_sz(inst_id).unwrap();
     
-    // 收集所有 asks 价格和数量
+    // 收集所有 asks
     let mut asks_list: Vec<(u64, u64)> = Vec::new();
     for ((i, min_price, _max_price), vec) in map_book_vec_asks {
         if i == inst_id {
@@ -276,7 +276,7 @@ fn print_orderbook(
     }
     asks_list.sort_by_key(|(price, _)| *price);
     
-    // 收集所有 bids 价格和数量
+    // 收集所有 bids
     let mut bids_list: Vec<(u64, u64)> = Vec::new();
     for ((i, min_price, _max_price), vec) in map_book_vec_bids {
         if i == inst_id {
@@ -294,30 +294,33 @@ fn print_orderbook(
     println!("{:<15} {:<20} {:<20}", "Price", "Asks Size", "Bids Size");
     println!("{}", "-".repeat(55));
     
-    // 打印前20档
-    let max_depth = 20.max(asks_list.len()).max(bids_list.len());
-    for i in 0..max_depth.min(20) {
-        if i < asks_list.len() {
-            let (price, sz) = asks_list[i];
-            println!("{:<15.4} {:<20.4} {}", 
-                tick_int_to_price(price, tick_size),
-                tick_int_to_price(sz, min_sz),
-                if i < bids_list.len() {
-                    let (_bp, bsz) = bids_list[i];
-                    format!("{:<20.4}", tick_int_to_price(bsz, min_sz))
-                } else {
-                    "-".to_string()
-                }
-            );
-        } else if i < bids_list.len() {
-            let (_price, sz) = bids_list[i];
-            println!("{:<15} {:<20} {:<20.4}", "-", "-", 
-                tick_int_to_price(sz, min_sz));
-        }
+    // 取前20档 asks（最低价的20档）和前20档 bids（最高价的20档）
+    let asks_to_show = &asks_list[..asks_list.len().min(20)];
+    let bids_to_show = &bids_list[..bids_list.len().min(20)];
+    
+    // 先显示最低的20档卖单（按价格从低到高）
+    for (price, sz) in asks_to_show {
+        println!("{:<15.4} {:<20.4} {:<20}", 
+            tick_int_to_price(*price, tick_size),
+            tick_int_to_price(*sz, min_sz),
+            "-"
+        );
     }
+    
+    // 分隔线
+    println!("{}", "=".repeat(55));
+    
+    // 再显示最高的20档买单（按价格从高到低）
+    for (price, sz) in bids_to_show {
+        println!("{:<15.4} {:<20} {:<20.4}", 
+            tick_int_to_price(*price, tick_size),
+            "-",
+            tick_int_to_price(*sz, min_sz)
+        );
+    }
+    
     println!("====================================\n");
 }
-
 #[cfg(test)]
 mod test{
     use std::fs::File;
