@@ -69,6 +69,38 @@ pub struct Books5 {
     pub action: Option<String>,
     #[serde(rename = "data")]
     pub data: Vec<Book5Data>,
+    // OKX 错误响应可能包含 code (integer 类型)
+    #[serde(default, deserialize_with = "deserialize_code_as_string")]
+    pub code: Option<String>,
+    #[serde(rename = "msg")]
+    pub msg: Option<String>,
+}
+
+// 自定义反序列化函数：接受 integer 或 string 并统一转为 Option<String>
+fn deserialize_code_as_string<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use serde::Deserialize;
+    use sonic_rs::{Value, JsonValueTrait};
+    
+    let value = Option::<Value>::deserialize(deserializer)?;
+    match value {
+        None => Ok(None),
+        Some(v) => {
+            if v.is_str() {
+                Ok(Some(v.as_str().unwrap().to_string()))
+            } else if v.is_i64() {
+                Ok(Some(v.as_i64().unwrap().to_string()))
+            } else if v.is_u64() {
+                Ok(Some(v.as_u64().unwrap().to_string()))
+            } else if v.is_f64() {
+                Ok(Some(v.as_f64().unwrap().to_string()))
+            } else {
+                Ok(None)
+            }
+        }
+    }
 }
 
 /// Book5Data 结构体 - books5 不包含 checksum 等字段
@@ -208,6 +240,11 @@ pub fn order_market(id: &str, side: &str, inst_id_code: &str,sz: &str)->String{
 }
 
 
+
+
+pub fn order_buy(id: &str,inst_id: &str){
+
+}
 
 
 #[cfg(test)]
