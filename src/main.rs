@@ -379,31 +379,32 @@ fn as_bs_to_pv(inst_id: &String, vec_str: Vec<String>,sz:&str) -> (u64, u64) {
 
 #[cfg(test)]
 mod test{
-    use std::fs::File;
-    use std::io::BufReader;
-    use sonic_rs::{from_reader, from_str, to_writer_pretty};
-    use sonic_rs::writer::BufferedWriter;
-    use tokio::fs::read_to_string;
-    use okx::common::rest_api::{instruments, ticker, OkxSwapInstrumentsResponse, SwapInstrument};
-    use okx::common::utils::price_to_tick_int_str;
+    use super::*;
 
     #[tokio::test]
-    async fn test_main(){
-        let price_str = "91095.5";
-        let file = File::open("data/instruments.json").unwrap();
-        let reader = BufReader::new(file);
-        let instruments: Vec<SwapInstrument> = from_reader::<BufReader<File>,Vec<SwapInstrument>>(reader).unwrap();
-        for swap_instrument in instruments {
-            if swap_instrument.settle_ccy.eq("USDT") {
-                println!("{:?}",swap_instrument.inst_id);
+    async fn order_test() -> Result<(), Box<dyn std::error::Error>>{
+        let ws_order = create_ws(get_ws_private()).await?;
+        let (mut tx, mut rx) = ws_order.split();
+        let inst_id = "ETH-USDT-SWAP";
+        let order_id = ORDER_COUNTER.fetch_add(1, Ordering::Relaxed).to_string();
+        let market_order = order_market(&order_id, Side::BUY,inst_id, "3000");
+        tx.send(send_str(login().as_str())).await?;
+        let mut is_send_order = false;
+        loop {
+            let result = rx.next().await.unwrap();
+            match result {
+                Ok(Text(text)) => {
+                    info!("{}",text.as_str());
+                    if !is_send_order {
+                        tx.send(send_str(&market_order)).await?;
+                        is_send_order = true;
+                    }
+                }
+                _ => {}
             }
-            // println!("{}",swap_instrument.settle_ccy)
-            // break
         }
+        Ok(())
+    }
 
-    }
-    #[tokio::test]
-    async fn ticker_test(){
-        ticker("BTC-USDT-SWAP").await;
-    }
+
 }
