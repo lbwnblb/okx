@@ -198,10 +198,10 @@ pub fn login()->String{
 // ).to_string()
 // }
 
-pub fn order(id: &str, side: &str, inst_id_code: &str, td_mode: &str, ord_type: &str, px: Option<&str>, sz: &str) ->String{
+pub fn order(id: &str, side: &str, inst_id: &str, td_mode: &str, ord_type: &str, px: Option<&str>, sz: &str) ->String{
     let mut arg = json!({
         "side": side,
-        "instIdCode": inst_id_code,
+        "inst_id": inst_id,
         "tdMode": td_mode,
         "ordType": ord_type,
         "sz": sz
@@ -235,8 +235,8 @@ impl Side {
     pub const BUY: &'static str = "buy";
     pub const SELL: &'static str = "sell";
 }
-pub fn order_market(id: &str, side: &str, inst_id_code: &str,sz: &str)->String{
-    order(id, side, inst_id_code, TdMode::CROSS,OrderType::MARKET, None, sz)
+pub fn order_market(id: &str, side: &str, inst_id: &str,sz: &str)->String{
+    order(id, side, inst_id, TdMode::CROSS,OrderType::MARKET, None, sz)
 }
 
 
