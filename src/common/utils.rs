@@ -301,7 +301,7 @@ pub fn get_inst_id_code(inst_id: &str) -> String {
 }
 
 pub fn order_id_str(inst_id: &str,side:&str,price:&str,order_type:&str)-> String {
-    format!("{} {} {} {}",inst_id,side,price,order_type)
+    format!("{}-{}-{}-{}",inst_id,side,price,order_type)
 }
 
 #[cfg(test)]
