@@ -2,6 +2,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::error;
 use std::fs::File;
 use std::sync::RwLock;
+use std::sync::atomic::{AtomicU64, Ordering};
 use futures::{SinkExt, StreamExt};
 use futures::stream::{SplitSink, SplitStream};
 use log::{error, info};
@@ -19,6 +20,8 @@ use okx::common::config::{get_ws_private, get_ws_public};
 use okx::common::rest_api::instruments;
 use okx::common::utils::{get_inst_id_code, get_min_sz, get_sz, log_init, order_id_str, price_to_tick_int_str, send_str, tick_int_to_price_str};
 use okx::common::ws_api::{create_ws, login, order, order_market, subscribe, BookData, Books, Books5, OkxMessage, OrderType, Side, Ticker, TickerData, CHANNEL_BOOKS, CHANNEL_BOOKS5, CHANNEL_TICKERS};
+
+static ORDER_COUNTER: AtomicU64 = AtomicU64::new(1);
 
 pub struct TaskFn;
 impl TaskFn {
@@ -334,7 +337,7 @@ async fn main() ->Result<(), Box<dyn error::Error>>{
                                             CHANNEL_TICKERS=>{
                                                 if !is_send_order {
                                                     let ticker = from_str::<Ticker>(&text).unwrap();
-                                                    let order_id = order_id_str(&inst_id,Side::BUY,&ticker.data.first().unwrap().last,OrderType::MARKET);
+                                                    let order_id = ORDER_COUNTER.fetch_add(1, Ordering::Relaxed).to_string();
                                                     let market_order = order_market(&order_id, Side::BUY, &get_inst_id_code(inst_id), "1");
                                                     info!("{}",market_order);
                                                     tx_order_channel.send(market_order).await.unwrap();
