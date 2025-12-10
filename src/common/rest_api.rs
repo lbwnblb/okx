@@ -55,7 +55,7 @@ pub struct SwapInstrument {
     pub inst_id: String,                        // 合约ID，如 BTC-USD-SWAP
 
     #[serde(alias = "instIdCode")]
-    pub inst_id_code: String,
+    pub inst_id_code: u64,                      // OKX 返回的是 integer
 
     #[serde(alias = "instType")]
     pub inst_type: String,                      // SWAP

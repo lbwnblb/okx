@@ -296,8 +296,8 @@ pub fn sign(timestamp: &str, method: &str, path: &str, body: &str, secret_key: &
 }
 
 
-pub fn get_inst_id_code(inst_id: &str) -> &String {
-    &get_swap_instrument(inst_id).unwrap().inst_id_code
+pub fn get_inst_id_code(inst_id: &str) -> String {
+    get_swap_instrument(inst_id).unwrap().inst_id_code.to_string()
 }
 
 pub fn order_id_str(inst_id: &str,side:&str,price:&str,order_type:&str)-> String {

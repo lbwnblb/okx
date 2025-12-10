@@ -334,7 +334,7 @@ async fn main() ->Result<(), Box<dyn error::Error>>{
                                             CHANNEL_TICKERS=>{
                                                 let ticker = from_str::<Ticker>(&text).unwrap();
                                                 let order_id = order_id_str(&inst_id,Side::BUY,&ticker.data.first().unwrap().last,OrderType::MARKET);
-                                                let market_order = order_market(&order_id, Side::BUY, get_inst_id_code(inst_id), "1");
+                                                let market_order = order_market(&order_id, Side::BUY, &get_inst_id_code(inst_id), "1");
                                                 info!("{}",market_order);
                                                 tx_order_channel.send(market_order).await.unwrap();
                                                 break;
