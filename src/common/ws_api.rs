@@ -204,7 +204,8 @@ pub fn order(id: &str, side: &str, inst_id: &str, td_mode: &str, ord_type: &str,
         "instId": inst_id,
         "tdMode": td_mode,
         "ordType": ord_type,
-        "sz": sz
+        "sz": sz,
+        "posSide": "net"
     });
 
     if let Some(price) = px {
