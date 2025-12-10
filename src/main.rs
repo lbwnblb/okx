@@ -379,6 +379,7 @@ fn as_bs_to_pv(inst_id: &String, vec_str: Vec<String>,sz:&str) -> (u64, u64) {
 
 #[cfg(test)]
 mod test{
+    use okx::common::utils::get_quantity;
     use super::*;
 
     #[tokio::test]
@@ -388,7 +389,8 @@ mod test{
         let (mut tx, mut rx) = ws_order.split();
         let inst_id = "ETH-USDT-SWAP";
         let order_id = ORDER_COUNTER.fetch_add(1, Ordering::Relaxed).to_string();
-        let market_order = order_market(&order_id, Side::BUY,inst_id, "3000");
+
+        let market_order = order_market(&order_id, Side::BUY,inst_id,get_quantity(inst_id,1).to_string().as_str());
         tx.send(send_str(login().as_str())).await?;
         let mut is_send_order = false;
         loop {

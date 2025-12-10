@@ -60,6 +60,12 @@ pub fn get_min_sz(inst_id:&str) ->Option<&String>{
 pub fn get_swap_instrument(inst_id: &str) -> Option<&SwapInstrument> {
     INSTRUMENTS_MAP.get(inst_id)
 }
+
+pub fn get_quantity(inst_id: &str,quantity:u64)->u64{
+    let ct_val = get_ct_val(inst_id);
+    let to_tick_int_str = price_to_tick_int_str("1", ct_val);
+    quantity*to_tick_int_str
+}
 #[cfg(test)]
 mod utils_test {
     use super::*;
@@ -168,6 +174,10 @@ pub fn send_str(value: &str) -> Message {
     Text(Utf8Bytes::from(value))
 }
 
+pub fn get_ct_val(inst_id: &str)->&str{
+    &get_swap_instrument(inst_id).unwrap().ct_val
+}
+
 pub fn log_init() {
     let offset = FixedOffset::east_opt(8 * 3600).unwrap(); // 定义 UTC+8 偏移变量
 
@@ -195,7 +205,9 @@ pub fn price_to_tick_int_str(price: &str, tick_size: &str) -> u64 {
     }
     if !price.contains(".") && tick_size.contains(".") {
         let tick_size_sp: Vec<&str> = tick_size.split(".").collect();
-        return u64::from_str(format!("{}{}", price,tick_size_sp[1]).as_str().replace("1","0").as_str()).unwrap()
+        let v = format!("{}{}", price, tick_size_sp[1].replace("1", "0"));
+        info!("{v}");
+        return u64::from_str(v.as_str()).unwrap()
     }
 
     let price_split: Vec<&str> = price.split('.').collect();
