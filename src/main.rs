@@ -383,6 +383,7 @@ mod test{
 
     #[tokio::test]
     async fn order_test() -> Result<(), Box<dyn std::error::Error>>{
+        log_init();
         let ws_order = create_ws(get_ws_private()).await?;
         let (mut tx, mut rx) = ws_order.split();
         let inst_id = "ETH-USDT-SWAP";
