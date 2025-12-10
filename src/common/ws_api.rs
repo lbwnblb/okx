@@ -201,7 +201,7 @@ pub fn login()->String{
 pub fn order(id: &str, side: &str, inst_id: &str, td_mode: &str, ord_type: &str, px: Option<&str>, sz: &str) ->String{
     let mut arg = json!({
         "side": side,
-        "inst_id": inst_id,
+        "instId": inst_id,
         "tdMode": td_mode,
         "ordType": ord_type,
         "sz": sz
