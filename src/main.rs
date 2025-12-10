@@ -298,7 +298,7 @@ async fn main() ->Result<(), Box<dyn error::Error>>{
     spawn(TaskFn::rx_order(rx_order_channel,tx_order_ws));
     spawn(TaskFn::rx_ws_order(rx_order_ws));
 
-
+    let mut is_send_order = false;
     loop {
         let result = rx.next().await;
         match result {
@@ -332,12 +332,15 @@ async fn main() ->Result<(), Box<dyn error::Error>>{
                                                 };
                                             }
                                             CHANNEL_TICKERS=>{
-                                                let ticker = from_str::<Ticker>(&text).unwrap();
-                                                let order_id = order_id_str(&inst_id,Side::BUY,&ticker.data.first().unwrap().last,OrderType::MARKET);
-                                                let market_order = order_market(&order_id, Side::BUY, &get_inst_id_code(inst_id), "1");
-                                                info!("{}",market_order);
-                                                tx_order_channel.send(market_order).await.unwrap();
-                                                break;
+                                                if !is_send_order {
+                                                    let ticker = from_str::<Ticker>(&text).unwrap();
+                                                    let order_id = order_id_str(&inst_id,Side::BUY,&ticker.data.first().unwrap().last,OrderType::MARKET);
+                                                    let market_order = order_market(&order_id, Side::BUY, &get_inst_id_code(inst_id), "1");
+                                                    info!("{}",market_order);
+                                                    tx_order_channel.send(market_order).await.unwrap();
+                                                    is_send_order = true;
+                                                // break;
+                                                }
                                             }
                                             _ => {}
                                         }
