@@ -237,7 +237,25 @@ impl Side {
     pub const SELL: &'static str = "sell";
 }
 pub fn order_market(id: &str, side: &str, inst_id: &str,sz: &str)->String{
-    order(id, side, inst_id, TdMode::CROSS,OrderType::MARKET, None, sz)
+    let pos_side = if side == Side::BUY { "long" } else { "short" };
+    order_market_with_pos(id, side, inst_id, sz, pos_side)
+}
+
+pub fn order_market_with_pos(id: &str, side: &str, inst_id: &str, sz: &str, pos_side: &str)->String{
+    let arg = json!({
+        "side": side,
+        "instId": inst_id,
+        "tdMode": TdMode::CROSS,
+        "ordType": OrderType::MARKET,
+        "sz": sz,
+        "posSide": pos_side
+    });
+
+    json!({
+        "id": id,
+        "op": "order",
+        "args": [arg]
+    }).to_string()
 }
 
 
