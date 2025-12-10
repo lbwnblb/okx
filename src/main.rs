@@ -338,7 +338,7 @@ async fn main() ->Result<(), Box<dyn error::Error>>{
                                                 if !is_send_order {
                                                     let ticker = from_str::<Ticker>(&text).unwrap();
                                                     let order_id = ORDER_COUNTER.fetch_add(1, Ordering::Relaxed).to_string();
-                                                    let market_order = order_market(&order_id, Side::BUY,inst_id, "1");
+                                                    let market_order = order_market(&order_id, Side::BUY,inst_id, "3000");
                                                     info!("{}",market_order);
                                                     tx_order_channel.send(market_order).await.unwrap();
                                                     is_send_order = true;
