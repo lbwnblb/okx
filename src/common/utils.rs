@@ -61,10 +61,13 @@ pub fn get_swap_instrument(inst_id: &str) -> Option<&SwapInstrument> {
     INSTRUMENTS_MAP.get(inst_id)
 }
 
-pub fn get_quantity(inst_id: &str,quantity:u64)->u64{
+pub fn get_quantity_sz(inst_id: &str,quantity:&str)->String{
+    let min_sz = get_min_sz(inst_id).unwrap();
+    let quantity_to = price_to_tick_int_str(quantity, min_sz);
     let ct_val = get_ct_val(inst_id);
     let to_tick_int_str = price_to_tick_int_str("1", ct_val);
-    quantity*to_tick_int_str
+    
+    tick_int_to_price_str(quantity_to*to_tick_int_str,get_min_sz(inst_id).unwrap())
 }
 #[cfg(test)]
 mod utils_test {
