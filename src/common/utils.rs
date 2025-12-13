@@ -209,7 +209,6 @@ pub fn price_to_tick_int_str(price: &str, tick_size: &str) -> u64 {
     if !price.contains(".") && tick_size.contains(".") {
         let tick_size_sp: Vec<&str> = tick_size.split(".").collect();
         let v = format!("{}{}", price, tick_size_sp[1].replace("1", "0"));
-        info!("{v}");
         return u64::from_str(v.as_str()).unwrap()
     }
 
