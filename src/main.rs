@@ -63,7 +63,7 @@ impl TaskFn {
         let mut bids_key = BIDS.iter().map(|entry| { entry.key().clone() }).collect::<Vec<(String, u64, u64)>>();
         bids_key.sort_by(|(_, p1, _), (_, p2, _)| { p1.cmp(p2).reverse() });
         for (i,p1,p2) in bids_key {
-            let ref_k_v = ASKS.get(&(i, p1, p2)).unwrap();
+            let ref_k_v = BIDS.get(&(i, p1, p2)).unwrap();
 
             let value = ref_k_v.value();
             for j in 0..value.len() {
