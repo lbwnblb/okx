@@ -16,9 +16,11 @@ use sha2::Sha256;
 use sonic_rs::{JsonValueTrait, Value, json, to_string};
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::{BufReader, Write};
+use std::io::{BufRead, BufReader, Lines, Write};
 use std::ops::Add;
+use std::path::Path;
 use std::str::FromStr;
+use tokio::sync::Mutex;
 use tokio_tungstenite::tungstenite::Message::Text;
 use tokio_tungstenite::tungstenite::{Message, Utf8Bytes};
 use uuid::Uuid;
@@ -318,9 +320,40 @@ pub fn order_id_str(inst_id: &str,side:&str,price:&str,order_type:&str)-> String
     format!("{}-{}-{}-{}",inst_id,side,price,order_type)
 }
 
+pub const WS_FILE_PATH: &str = "data/input.txt";
+pub fn read_ws_file() -> Lines<BufReader<File>> {
+    let path = Path::new(WS_FILE_PATH);
+    let file = File::open(path).unwrap();
+    let reader = BufReader::new(file);
+    reader.lines()
+}
+
 #[cfg(test)]
 mod test {
+    #[tokio::test]
+    async fn read_test() {
+        let path = Path::new(WS_FILE_PATH);
+        // for _ in 0..10 {
+        //
+        //     let mut file = File::options()
+        //         .append(true)
+        //         .create(true)
+        //         .open(path).unwrap();
+        //     writeln!(file,"hello world").unwrap();
+        // }
+        let file = File::open(path).unwrap();
+        let reader = BufReader::new(file);
+        for line in reader.lines() {
+            let line = line.unwrap();  // 处理可能的 IO 错误
+            println!("{}", line);
+        }
+    }
+    use std::io::BufRead;
+use std::fs::{read, write};
+    use std::path::Path;
     use sonic_rs::from_reader;
+    use tokio::fs::read_link;
+    use tokio::io::AsyncBufReadExt;
     use super::*;
     use crate::common::rest_api::ticker;
     use crate::common::ws_api::{BookData, Books};
@@ -426,4 +459,5 @@ mod test {
         .unwrap();
         println!("{}", response.text().await.unwrap());
     }
+
 }

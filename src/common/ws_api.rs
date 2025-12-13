@@ -280,16 +280,64 @@ pub fn order_buy(id: &str,inst_id: &str){
 
 #[cfg(test)]
 mod ws_test{
-    use crate::common::config::OK_SIMULATION_ACCESS_PASSPHRASE;
+    use std::io::Write;
+use tokio_tungstenite::tungstenite::Message::Text;
+
+    #[tokio::test]
+    async fn write_file_test()->Result<(), Box<dyn std::error::Error>>{
+        let path = Path::new(WS_FILE_PATH);
+        let mut file = File::options()
+            .append(true)
+            .create(true)
+            .open(path).unwrap();
+        log_init();
+        let ws = create_ws(get_ws_public()).await?;
+
+        let inst_id = "ETH-USDT-SWAP";
+        let (mut tx, mut rx) = ws.split();
+        tx.send(send_str(subscribe(CHANNEL_BOOKS,inst_id ).as_str())).await?;
+        tx.send(send_str(subscribe(CHANNEL_TICKERS,inst_id).as_str())).await?;
+        tx.send(send_str(subscribe(CHANNEL_BOOKS5,inst_id).as_str())).await?;
+        tx.send(send_str(subscribe(CHANNEL_BBO_TBT,inst_id).as_str())).await?;
+        loop {
+            let result = rx.next().await;
+            match result {
+                None => {
+                    break;
+                }
+                Some(result) => {
+                    match result {
+                        Ok(message) => {
+                            match message {
+                                Text(text) => {
+                                    writeln!(file, "{}", text).unwrap();
+                                }
+                                _ => {}
+                            }
+                        }
+                        Err(error) => {
+                            log::error!("{}", error);
+                        }
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    use std::fs::File;
+    use std::path::Path;
+    use crate::common::config::{get_ws_private, get_ws_public, OK_SIMULATION_ACCESS_PASSPHRASE};
     use crate::common::config::OKX_SIMULATION_SECRET_KEY;
     use crate::common::config::OKX_SIMULATION_API_KEY;
     use futures::{SinkExt, StreamExt};
     use sonic_rs::{json, to_string};
     use time::OffsetDateTime;
+    use tokio::sync::Mutex;
     use tokio_tungstenite::tungstenite::{Message, Utf8Bytes};
     use crate::common::config::WS_SIMULATION_URL_PRIVATE;
-    use crate::common::utils::{send_str, sign};
-    use crate::common::ws_api::{create_ws, order};
+    use crate::common::utils::{log_init, send_str, sign, WS_FILE_PATH};
+    use crate::common::ws_api::{create_ws, login, order, subscribe, CHANNEL_BBO_TBT, CHANNEL_BOOKS, CHANNEL_BOOKS5, CHANNEL_TICKERS};
 
 //     #[tokio::test]
 //     async fn test_login(){
