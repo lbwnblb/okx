@@ -43,7 +43,7 @@ impl TaskFn {
             let value = ref_k_v.value();
             let mut flag_break = false;
             for j in 0..value.len() {
-                if j>=100 {
+                if j>=1 {
                    flag_break=true;
                    break;
                 }
@@ -67,7 +67,7 @@ impl TaskFn {
 
             let value = ref_k_v.value();
             for j in 0..value.len() {
-                if j>=100 {
+                if j>=1 {
                     return;
                 }
                 let price = j as u64 + p1;
