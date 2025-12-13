@@ -19,7 +19,7 @@ use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
 use okx::common::config::{get_ws_private, get_ws_public};
 use okx::common::rest_api::instruments;
 use okx::common::utils::{get_inst_id_code, get_min_sz, get_sz, log_init, order_id_str, price_to_tick_int_str, send_str, tick_int_to_price_str};
-use okx::common::ws_api::{create_ws, login, order, order_market, subscribe, BookData, Books, Books5, OkxMessage, OrderType, Side, Ticker, TickerData, CHANNEL_BBO_TBT, CHANNEL_BOOKS, CHANNEL_BOOKS5, CHANNEL_TICKERS};
+use okx::common::ws_api::{create_ws, login, order, order_market, subscribe, BookData, Books, Books5, OkxMessage, OrderType, Side, Ticker, TickerData, ChannelBboTbt, CHANNEL_BOOKS, CHANNEL_BOOKS5, CHANNEL_TICKERS, CHANNEL_BBO_TBT};
 
 static ORDER_COUNTER: AtomicU64 = AtomicU64::new(1);
 
@@ -271,7 +271,9 @@ async fn main() ->Result<(), Box<dyn error::Error>>{
 
                                             }
                                             CHANNEL_BBO_TBT=>{
-                                                info!("CHANNEL_BBO_TBT {}",text);
+                                                // info!("ChannelBboTbt {}",text);
+                                                let bbo_tbt:ChannelBboTbt = from_str(&text).unwrap();
+                                                info!("{:?}",bbo_tbt);
                                             }
                                             _ => {}
                                         }

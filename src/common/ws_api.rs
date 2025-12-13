@@ -4,6 +4,7 @@ use sonic_rs::{json, Deserialize, Serialize};
 use time::OffsetDateTime;
 use tokio::net::TcpStream;
 use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
+use tokio_tungstenite::tungstenite::protocol::frame::coding::Data;
 use crate::common::utils::sign;
 
 pub async fn create_ws(url: &str) ->Result<WebSocketStream<MaybeTlsStream<TcpStream>>, Box<dyn std::error::Error>>{
@@ -146,6 +147,17 @@ pub struct TickerData {
     pub vol24h: String,     // 24小时成交量（张/USDT）
 
     pub ts: String,         // 时间戳
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ChannelBboTbt {
+    pub inst_id: String,
+    pub data: Vec<BboTbtData>
+}
+#[derive(Debug, Deserialize)]
+pub struct BboTbtData{
+    pub asks: Vec<Vec<String>>,
+    pub bids: Vec<Vec<String>>,
 }
 
 pub const CHANNEL_TICKERS: &str = "tickers";
