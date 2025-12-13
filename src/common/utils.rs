@@ -332,31 +332,26 @@ pub fn read_ws_file() -> Lines<BufReader<File>> {
 mod test {
     #[tokio::test]
     async fn read_test() {
+        log_init();
         let path = Path::new(WS_FILE_PATH);
-        // for _ in 0..10 {
-        //
-        //     let mut file = File::options()
-        //         .append(true)
-        //         .create(true)
-        //         .open(path).unwrap();
-        //     writeln!(file,"hello world").unwrap();
-        // }
+        
         let file = File::open(path).unwrap();
         let reader = BufReader::new(file);
         for line in reader.lines() {
             let line = line.unwrap();  // 处理可能的 IO 错误
-            println!("{}", line);
+            let okx_msg:OkxMessage = from_str(line.as_str()).unwrap();
+            println!("{:?}",okx_msg)
         }
     }
     use std::io::BufRead;
 use std::fs::{read, write};
     use std::path::Path;
-    use sonic_rs::from_reader;
+    use sonic_rs::{from_reader, from_str};
     use tokio::fs::read_link;
     use tokio::io::AsyncBufReadExt;
     use super::*;
     use crate::common::rest_api::ticker;
-    use crate::common::ws_api::{BookData, Books};
+    use crate::common::ws_api::{BookData, Books, OkxMessage};
 
     #[tokio::test]
     async fn test_okx_simulation_api_account_balance() {

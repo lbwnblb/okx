@@ -380,9 +380,60 @@ fn as_bs_to_pv(inst_id: &String, vec_str: Vec<String>,sz:&str) -> (u64, u64) {
 
 #[cfg(test)]
 mod test{
-    use okx::common::utils::get_quantity_sz;
+    use std::io::{BufRead, BufReader};
+    use std::path::Path;
+    use okx::common::utils::{get_quantity_sz, WS_FILE_PATH};
     use super::*;
+    #[tokio::test]
+    async fn read_test() {
+        log_init();
+        let path = Path::new(WS_FILE_PATH);
 
+        let file = File::open(path).unwrap();
+        let reader = BufReader::new(file);
+        for line in reader.lines() {
+            let text = line.unwrap();  // 处理可能的 IO 错误
+            let okx_msg:OkxMessage = from_str(text.as_str()).unwrap();
+            let result = from_str::<OkxMessage>(&text);
+            if let Ok (result) = result{
+                if let Some(event) = result.event {
+                    info!("event {}", event);
+                    continue;
+                }
+                if let Some(args) = result.arg {
+                    match args.channel.as_str() {
+                        CHANNEL_BOOKS => {
+                            // let books = from_str::<Books>(&text).unwrap();
+                            if book_channel_tx.send((text,args.inst_id.clone(),0)).await.is_err() {
+                                error!("book channel closed");
+                                break;
+                            }
+                        }
+                        CHANNEL_BOOKS5=>{
+                            if book_channel_tx.send((text,args.inst_id.clone(),1)).await.is_err(){
+                                error!("book channel closed");
+                                break;
+                            };
+                        }
+                        CHANNEL_TICKERS=>{
+                            let tickers = from_str::<Ticker>(&text).unwrap();
+                            info!("{}",tickers.data.first().unwrap().last);
+                            TaskFn::print_order(inst_id);
+
+                        }
+                        CHANNEL_BBO_TBT=>{
+                            if book_channel_tx.send((text,args.inst_id.clone(),2)).await.is_err(){
+                                error!("book channel closed");
+                                break;
+                            };
+
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+    }
     #[tokio::test]
     async fn quantity_test(){
         let inst_id = "BTC-USDT-SWAP";
