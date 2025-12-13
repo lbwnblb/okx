@@ -342,7 +342,6 @@ async fn main() ->Result<(), Box<dyn error::Error>>{
 
                                             }
                                             CHANNEL_BBO_TBT=>{
-                                                info!("ChannelBboTbt {}",text);
                                                 if book_channel_tx.send((text,args.inst_id.clone(),2)).await.is_err(){
                                                     error!("book channel closed");
                                                     break;
