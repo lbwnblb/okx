@@ -339,6 +339,9 @@ async fn main() ->Result<(), Box<dyn error::Error>>{
                                                 };
                                             }
                                             CHANNEL_TICKERS=>{
+                                                let tickers = from_str::<Ticker>(&text).unwrap();
+                                                info!("{}",tickers.data.first().unwrap().last);
+                                                TaskFn::print_order(inst_id);
 
                                             }
                                             CHANNEL_BBO_TBT=>{
@@ -346,7 +349,7 @@ async fn main() ->Result<(), Box<dyn error::Error>>{
                                                     error!("book channel closed");
                                                     break;
                                                 };
-                                                TaskFn::print_order(inst_id);
+
                                             }
                                             _ => {}
                                         }
