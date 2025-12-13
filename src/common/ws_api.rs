@@ -151,8 +151,7 @@ pub struct TickerData {
 
 #[derive(Debug, Deserialize)]
 pub struct ChannelBboTbt {
-    #[serde(rename = "instId")]
-    pub inst_id: String,
+    pub arg: Arg,
     pub data: Vec<BboTbtData>
 }
 #[derive(Debug, Deserialize)]
