@@ -151,6 +151,7 @@ pub struct TickerData {
 
 #[derive(Debug, Deserialize)]
 pub struct ChannelBboTbt {
+    #[serde(rename = "instId")]
     pub inst_id: String,
     pub data: Vec<BboTbtData>
 }
