@@ -43,16 +43,14 @@ impl TaskFn {
             let value = ref_k_v.value();
             let mut flag_break = false;
             for j in 0..value.len() {
-                if j>=1 {
-                   flag_break=true;
-                   break;
-                }
                 let price = j as u64 + p1;
                 let quantity = value[j];
                 if quantity != 0 {
                     let price_str = tick_int_to_price_str(price, sz);
                     let quantity_str = tick_int_to_price_str(quantity, min_sz);
-                    info!("asks 价格：{} 数量：{}", price_str, quantity_str)
+                    info!("asks 价格：{} 数量：{}", price_str, quantity_str);
+                    flag_break = true;
+                    break
                 }
                 // println!("{}", );
             }
@@ -67,17 +65,15 @@ impl TaskFn {
 
             let value = ref_k_v.value();
             for j in 0..value.len() {
-                if j>=1 {
-                    return;
-                }
+
                 let price = j as u64 + p1;
                 let quantity = value[j];
                 if quantity != 0 {
                     let price_str = tick_int_to_price_str(price, sz);
                     let quantity_str = tick_int_to_price_str(quantity, min_sz);
-                    info!("bids 价格：{} 数量：{}", price_str, quantity_str)
+                    info!("bids 价格：{} 数量：{}", price_str, quantity_str);
+                    return;
                 }
-                // println!("{}", );
             }
         }
     }
