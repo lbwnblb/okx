@@ -32,6 +32,52 @@ static BIDS: Lazy<DashMap<(String, u64, u64), Vec<u64>>> = Lazy::new(|| {
 });
 pub struct TaskFn;
 impl TaskFn {
+
+    pub fn print_order() {
+
+        let mut asks_key = ASKS.iter().map(|entry| { entry.key().clone() }).collect::<Vec<(String, u64, u64)>>();
+        asks_key.sort_by(|(_, p1, _), (_, p2, _)| { p1.cmp(p2) });
+        for (i,p1,p2) in asks_key {
+            let sz = get_sz(&i).unwrap();
+            let min_sz = get_min_sz(&i).unwrap();
+            let ref_k_v = ASKS.get(&(i, p1, p2)).unwrap();
+            let value = ref_k_v.value();
+            for j in 0..value.len() {
+                if j>=100 {
+                   return;
+                }
+                let price = j as u64 + p1;
+                let quantity = value[j];
+                if quantity != 0 {
+                    let price_str = tick_int_to_price_str(price, sz);
+                    let quantity_str = tick_int_to_price_str(quantity, min_sz);
+                    info!("asks 价格：{} 数量：{}", price_str, quantity_str)
+                }
+                // println!("{}", );
+            }
+        }
+        let mut bids_key = BIDS.iter().map(|entry| { entry.key().clone() }).collect::<Vec<(String, u64, u64)>>();
+        bids_key.sort_by(|(_, p1, _), (_, p2, _)| { p1.cmp(p2).reverse() });
+        for (i,p1,p2) in bids_key {
+            let sz = get_sz(&i).unwrap();
+            let min_sz = get_min_sz(&i).unwrap();
+            let ref_k_v = ASKS.get(&(i, p1, p2)).unwrap();
+            let value = ref_k_v.value();
+            for j in 0..value.len() {
+                if j>=100 {
+                    return;
+                }
+                let price = j as u64 + p1;
+                let quantity = value[j];
+                if quantity != 0 {
+                    let price_str = tick_int_to_price_str(price, sz);
+                    let quantity_str = tick_int_to_price_str(quantity, min_sz);
+                    info!("asks 价格：{} 数量：{}", price_str, quantity_str)
+                }
+                // println!("{}", );
+            }
+        }
+    }
     pub async fn rx_books(mut rx: Receiver<(Utf8Bytes,String,u8)>){
 
         loop {
@@ -298,6 +344,7 @@ async fn main() ->Result<(), Box<dyn error::Error>>{
                                                     error!("book channel closed");
                                                     break;
                                                 };
+                                                TaskFn::print_order();
                                             }
                                             _ => {}
                                         }
