@@ -3,9 +3,11 @@ use std::error;
 use std::fs::File;
 use std::sync::RwLock;
 use std::sync::atomic::{AtomicU64, Ordering};
+use dashmap::DashMap;
 use futures::{SinkExt, StreamExt};
 use futures::stream::{SplitSink, SplitStream};
 use log::{error, info};
+use once_cell::sync::Lazy;
 use serde::de::Unexpected::Option;
 use sonic_rs::{from_str, JsonValueTrait};
 use sonic_rs::writer::BufferedWriter;
@@ -22,12 +24,16 @@ use okx::common::utils::{get_inst_id_code, get_min_sz, get_sz, log_init, order_i
 use okx::common::ws_api::{create_ws, login, order, order_market, subscribe, BookData, Books, Books5, OkxMessage, OrderType, Side, Ticker, TickerData, ChannelBboTbt, CHANNEL_BOOKS, CHANNEL_BOOKS5, CHANNEL_TICKERS, CHANNEL_BBO_TBT};
 
 static ORDER_COUNTER: AtomicU64 = AtomicU64::new(1);
-
+static ASKS: Lazy<DashMap<(String, u64, u64), Vec<u64>>> = Lazy::new(|| {
+    DashMap::new()
+});
+static BIDS: Lazy<DashMap<(String, u64, u64), Vec<u64>>> = Lazy::new(|| {
+    DashMap::new()
+});
 pub struct TaskFn;
 impl TaskFn {
     pub async fn rx_books(mut rx: Receiver<(Utf8Bytes,String,u8)>){
-        let mut map_book_vec_asks = HashMap::<(String,u64,u64),Vec<u64>>::new();
-        let mut map_book_vec_bids = HashMap::<(String,u64,u64),Vec<u64>>::new();
+
         loop {
             match rx.recv().await {
                 Some((b,inst_id,task_id)) => {
@@ -49,7 +55,7 @@ impl TaskFn {
                                         vec_asks.iter().for_each(|(price,sz)| {
                                             vec_price[(price-min_price) as usize] = *sz;
                                         });
-                                        map_book_vec_asks.insert((inst_id.clone(),min_price.clone(),max_price.clone()),vec_price);
+                                        ASKS.insert((inst_id.clone(),min_price.clone(),max_price.clone()),vec_price);
 
                                         // 处理 bids
                                         let vec_bids = b_d.bids.into_iter().map(|vec_str| as_bs_to_pv(&inst_id, vec_str,sz)).collect::<Vec<(u64, u64)>>();
@@ -60,7 +66,7 @@ impl TaskFn {
                                         vec_bids.iter().for_each(|(price,sz)| {
                                             vec_price[(price-min_price) as usize] = *sz;
                                         });
-                                        map_book_vec_bids.insert((inst_id.clone(),min_price.clone(),max_price.clone()),vec_price);
+                                        BIDS.insert((inst_id.clone(),min_price.clone(),max_price.clone()),vec_price);
                                         break
                                     }
                                 }
@@ -69,7 +75,7 @@ impl TaskFn {
                                         // 获取 asks和bids
                                         let asks = b_d.asks;
                                         let bids = b_d.bids;
-                                        Self::books_update(&mut map_book_vec_asks, &mut map_book_vec_bids, &inst_id, sz,asks,bids);
+                                        Self::books_update(&inst_id, sz,asks,bids);
                                     }
                                 }
                                 _ => {}
@@ -84,7 +90,7 @@ impl TaskFn {
                             for bbb_tbt_data in data {
                                 let asks = bbb_tbt_data.asks;
                                 let bids = bbb_tbt_data.bids;
-                                Self::books_update(&mut map_book_vec_asks, &mut map_book_vec_bids, &inst_id, sz,asks,bids);
+                                Self::books_update(&inst_id, sz,asks,bids);
                             }
                         },
                         _ => {}
@@ -98,9 +104,9 @@ impl TaskFn {
         }
     }
 
-    fn books_update(map_book_vec_asks: &mut HashMap<(String, u64, u64), Vec<u64>>, map_book_vec_bids: &mut HashMap<(String, u64, u64), Vec<u64>>, inst_id: &String, sz: &String,asks: Vec<Vec<String>>, bids: Vec<Vec<String>>) {
+    fn books_update(inst_id: &String, sz: &String,asks: Vec<Vec<String>>, bids: Vec<Vec<String>>) {
         let asks_p_v = asks.into_iter().map(|vec_str| as_bs_to_pv(&inst_id, vec_str, sz)).collect::<Vec<(u64, u64)>>();
-        let mut keys = map_book_vec_asks.keys().cloned().collect::<Vec<(String, u64, u64)>>();
+        let mut keys = ASKS.iter().map(|entry| entry.key().clone()).collect::<Vec<(String, u64, u64)>>();
 
         for (p, v) in asks_p_v.iter() {
             let mut key = None;
@@ -131,7 +137,7 @@ impl TaskFn {
                         flag_min = flag_min - 1000;
                         let mut insert_vec = vec![0u64; 1000];
                         insert_vec[(p - flag_min) as usize] = *v;
-                        map_book_vec_asks.insert((inst_id.clone(), flag_min, flag_max), insert_vec);
+                        ASKS.insert((inst_id.clone(), flag_min, flag_max), insert_vec);
                     }
                     if flag_max != 0 && *p > flag_max {
                         let interval = p - flag_max;
@@ -142,12 +148,12 @@ impl TaskFn {
                         flag_max = flag_max + 1000;
                         let mut insert_vec = vec![0u64; 1000];
                         insert_vec[(p - flag_min) as usize] = *v;
-                        map_book_vec_asks.insert((inst_id.clone(), flag_min, flag_max), insert_vec);
+                        ASKS.insert((inst_id.clone(), flag_min, flag_max), insert_vec);
                     }
-                    keys = map_book_vec_asks.keys().cloned().collect::<Vec<(String, u64, u64)>>();
+                    keys = ASKS.iter().map(|entry| entry.key().clone()).collect::<Vec<(String, u64, u64)>>();
                 }
                 Some((i, m_p, mi_p)) => {
-                    if let Some(vec) = map_book_vec_asks.get_mut(&(i, m_p, mi_p)) {
+                    if let Some(mut vec) = ASKS.get_mut(&(i, m_p, mi_p)) {
                         vec[(p - m_p) as usize] = *v;
                     }
                 }
@@ -156,7 +162,7 @@ impl TaskFn {
 
         // 处理 bids 更新
         let bids_p_v = bids.into_iter().map(|vec_str| as_bs_to_pv(&inst_id, vec_str, sz)).collect::<Vec<(u64, u64)>>();
-        let mut keys = map_book_vec_bids.keys().cloned().collect::<Vec<(String, u64, u64)>>();
+        let mut keys = BIDS.iter().map(|entry| entry.key().clone()).collect::<Vec<(String, u64, u64)>>();
 
         for (p, v) in bids_p_v.iter() {
             let mut key = None;
@@ -187,7 +193,7 @@ impl TaskFn {
                         flag_min = flag_min - 1000;
                         let mut insert_vec = vec![0u64; 1000];
                         insert_vec[(p - flag_min) as usize] = *v;
-                        map_book_vec_bids.insert((inst_id.clone(), flag_min, flag_max), insert_vec);
+                        BIDS.insert((inst_id.clone(), flag_min, flag_max), insert_vec);
                     }
                     if flag_max != 0 && *p > flag_max {
                         let interval = p - flag_max;
@@ -198,12 +204,12 @@ impl TaskFn {
                         flag_max = flag_max + 1000;
                         let mut insert_vec = vec![0u64; 1000];
                         insert_vec[(p - flag_min) as usize] = *v;
-                        map_book_vec_bids.insert((inst_id.clone(), flag_min, flag_max), insert_vec);
+                        BIDS.insert((inst_id.clone(), flag_min, flag_max), insert_vec);
                     }
-                    keys = map_book_vec_bids.keys().cloned().collect::<Vec<(String, u64, u64)>>();
+                    keys = BIDS.iter().map(|entry| entry.key().clone()).collect::<Vec<(String, u64, u64)>>();
                 }
                 Some((i, m_p, mi_p)) => {
-                    if let Some(vec) = map_book_vec_bids.get_mut(&(i, m_p, mi_p)) {
+                    if let Some(mut vec) = BIDS.get_mut(&(i, m_p, mi_p)) {
                         vec[(p - m_p) as usize] = *v;
                     }
                 }
