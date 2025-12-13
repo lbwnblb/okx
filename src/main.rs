@@ -66,117 +66,10 @@ impl TaskFn {
                                 }
                                 "update" =>{
                                     for b_d in b.data.into_iter() {
-                                        // 处理 asks 更新
-                                        let asks_p_v = b_d.asks.into_iter().map(|vec_str| as_bs_to_pv(&inst_id, vec_str,sz)).collect::<Vec<(u64, u64)>>();
-                                        let mut keys = map_book_vec_asks.keys().cloned().collect::<Vec<(String, u64, u64)>>();
-
-                                        for (p,v) in asks_p_v.iter() {
-                                            let mut key = None;
-                                            let mut flag_min = 0u64;
-                                            let mut flag_max = 0u64;
-                                            for (inst_id_for,min_price,max_price) in &keys{
-                                                if !inst_id.eq(inst_id_for) {
-                                                    continue
-                                                }
-                                                if  min_price <= p && p <= max_price  {
-                                                    key = Some((inst_id_for.clone(),min_price.clone(),max_price.clone()));
-                                                }
-                                                if min_price > p {
-                                                    flag_min = min_price.clone();
-                                                }
-                                                if max_price < p {
-                                                    flag_max = max_price.clone();
-                                                }
-                                            }
-                                            match key {
-                                                None => {
-                                                    if flag_min != 0 && *p < flag_min {
-                                                        let interval = flag_min-p;
-                                                        if interval > 1000 {
-                                                            continue
-                                                        }
-                                                        flag_max = flag_min-1;
-                                                        flag_min = flag_min-1000;
-                                                        let mut insert_vec = vec![0u64; 1000];
-                                                        insert_vec[(p-flag_min) as usize] = *v;
-                                                        map_book_vec_asks.insert((inst_id.clone(),flag_min,flag_max),insert_vec);
-                                                    }
-                                                    if flag_max != 0 && *p > flag_max {
-                                                        let interval = p-flag_max;
-                                                        if interval > 1000 {
-                                                            continue
-                                                        }
-                                                        flag_min = flag_max+1;
-                                                        flag_max = flag_max+1000;
-                                                        let mut insert_vec = vec![0u64; 1000];
-                                                        insert_vec[(p-flag_min) as usize] = *v;
-                                                        map_book_vec_asks.insert((inst_id.clone(),flag_min,flag_max),insert_vec);
-                                                    }
-                                                    keys = map_book_vec_asks.keys().cloned().collect::<Vec<(String,u64,u64)>>();
-                                                }
-                                                Some((i,m_p,mi_p)) => {
-                                                    if let Some(vec) = map_book_vec_asks.get_mut(&(i,m_p,mi_p)) {
-                                                        vec[(p-m_p)as usize] = *v;
-                                                    }
-                                                }
-                                            }
-                                        }
-
-                                        // 处理 bids 更新
-                                        let bids_p_v = b_d.bids.into_iter().map(|vec_str| as_bs_to_pv(&inst_id, vec_str,sz)).collect::<Vec<(u64, u64)>>();
-                                        let mut keys = map_book_vec_bids.keys().cloned().collect::<Vec<(String, u64, u64)>>();
-
-                                        for (p,v) in bids_p_v.iter() {
-                                            let mut key = None;
-                                            let mut flag_min = 0u64;
-                                            let mut flag_max = 0u64;
-                                            for (inst_id_for,min_price,max_price) in &keys{
-                                                if !inst_id.eq(inst_id_for) {
-                                                    continue
-                                                }
-                                                if  min_price <= p && p <= max_price  {
-                                                    key = Some((inst_id_for.clone(),min_price.clone(),max_price.clone()));
-                                                }
-                                                if min_price > p {
-                                                    flag_min = min_price.clone();
-                                                }
-                                                if max_price < p {
-                                                    flag_max = max_price.clone();
-                                                }
-                                            }
-                                            match key {
-                                                None => {
-                                                    if flag_min != 0 && *p < flag_min {
-                                                        let interval = flag_min-p;
-                                                        if interval > 1000 {
-                                                            continue
-                                                        }
-                                                        flag_max = flag_min-1;
-                                                        flag_min = flag_min-1000;
-                                                        let mut insert_vec = vec![0u64; 1000];
-                                                        insert_vec[(p-flag_min) as usize] = *v;
-                                                        map_book_vec_bids.insert((inst_id.clone(),flag_min,flag_max),insert_vec);
-                                                    }
-                                                    if flag_max != 0 && *p > flag_max {
-                                                        let interval = p-flag_max;
-                                                        if interval > 1000 {
-                                                            continue
-                                                        }
-                                                        flag_min = flag_max+1;
-                                                        flag_max = flag_max+1000;
-                                                        let mut insert_vec = vec![0u64; 1000];
-                                                        insert_vec[(p-flag_min) as usize] = *v;
-                                                        map_book_vec_bids.insert((inst_id.clone(),flag_min,flag_max),insert_vec);
-                                                    }
-                                                    keys = map_book_vec_bids.keys().cloned().collect::<Vec<(String,u64,u64)>>();
-                                                }
-                                                Some((i,m_p,mi_p)) => {
-                                                    if let Some(vec) = map_book_vec_bids.get_mut(&(i,m_p,mi_p)) {
-                                                        vec[(p-m_p)as usize] = *v;
-                                                    }
-                                                }
-                                            }
-                                        }
+                                        // 获取 asks和bids
+                                        let asks = b_d.asks;
+                                        let bids = b_d.bids;
+                                        Self::books_update(&mut map_book_vec_asks, &mut map_book_vec_bids, &inst_id, sz,asks,bids);
                                     }
                                 }
                                 _ => {}
@@ -184,6 +77,15 @@ impl TaskFn {
                         },
                         1 => {
 
+                        },
+                        2 => {
+                            let bbo_tbt:ChannelBboTbt = from_str(&b).unwrap();
+                            let data = bbo_tbt.data;
+                            for bbb_tbt_data in data {
+                                let asks = bbb_tbt_data.asks;
+                                let bids = bbb_tbt_data.bids;
+                                Self::books_update(&mut map_book_vec_asks, &mut map_book_vec_bids, &inst_id, sz,asks,bids);
+                            }
                         },
                         _ => {}
                     }
@@ -195,6 +97,120 @@ impl TaskFn {
             }
         }
     }
+
+    fn books_update(map_book_vec_asks: &mut HashMap<(String, u64, u64), Vec<u64>>, map_book_vec_bids: &mut HashMap<(String, u64, u64), Vec<u64>>, inst_id: &String, sz: &String,asks: Vec<Vec<String>>, bids: Vec<Vec<String>>) {
+        let asks_p_v = asks.into_iter().map(|vec_str| as_bs_to_pv(&inst_id, vec_str, sz)).collect::<Vec<(u64, u64)>>();
+        let mut keys = map_book_vec_asks.keys().cloned().collect::<Vec<(String, u64, u64)>>();
+
+        for (p, v) in asks_p_v.iter() {
+            let mut key = None;
+            let mut flag_min = 0u64;
+            let mut flag_max = 0u64;
+            for (inst_id_for, min_price, max_price) in &keys {
+                if !inst_id.eq(inst_id_for) {
+                    continue
+                }
+                if min_price <= p && p <= max_price {
+                    key = Some((inst_id_for.clone(), min_price.clone(), max_price.clone()));
+                }
+                if min_price > p {
+                    flag_min = min_price.clone();
+                }
+                if max_price < p {
+                    flag_max = max_price.clone();
+                }
+            }
+            match key {
+                None => {
+                    if flag_min != 0 && *p < flag_min {
+                        let interval = flag_min - p;
+                        if interval > 1000 {
+                            continue
+                        }
+                        flag_max = flag_min - 1;
+                        flag_min = flag_min - 1000;
+                        let mut insert_vec = vec![0u64; 1000];
+                        insert_vec[(p - flag_min) as usize] = *v;
+                        map_book_vec_asks.insert((inst_id.clone(), flag_min, flag_max), insert_vec);
+                    }
+                    if flag_max != 0 && *p > flag_max {
+                        let interval = p - flag_max;
+                        if interval > 1000 {
+                            continue
+                        }
+                        flag_min = flag_max + 1;
+                        flag_max = flag_max + 1000;
+                        let mut insert_vec = vec![0u64; 1000];
+                        insert_vec[(p - flag_min) as usize] = *v;
+                        map_book_vec_asks.insert((inst_id.clone(), flag_min, flag_max), insert_vec);
+                    }
+                    keys = map_book_vec_asks.keys().cloned().collect::<Vec<(String, u64, u64)>>();
+                }
+                Some((i, m_p, mi_p)) => {
+                    if let Some(vec) = map_book_vec_asks.get_mut(&(i, m_p, mi_p)) {
+                        vec[(p - m_p) as usize] = *v;
+                    }
+                }
+            }
+        }
+
+        // 处理 bids 更新
+        let bids_p_v = bids.into_iter().map(|vec_str| as_bs_to_pv(&inst_id, vec_str, sz)).collect::<Vec<(u64, u64)>>();
+        let mut keys = map_book_vec_bids.keys().cloned().collect::<Vec<(String, u64, u64)>>();
+
+        for (p, v) in bids_p_v.iter() {
+            let mut key = None;
+            let mut flag_min = 0u64;
+            let mut flag_max = 0u64;
+            for (inst_id_for, min_price, max_price) in &keys {
+                if !inst_id.eq(inst_id_for) {
+                    continue
+                }
+                if min_price <= p && p <= max_price {
+                    key = Some((inst_id_for.clone(), min_price.clone(), max_price.clone()));
+                }
+                if min_price > p {
+                    flag_min = min_price.clone();
+                }
+                if max_price < p {
+                    flag_max = max_price.clone();
+                }
+            }
+            match key {
+                None => {
+                    if flag_min != 0 && *p < flag_min {
+                        let interval = flag_min - p;
+                        if interval > 1000 {
+                            continue
+                        }
+                        flag_max = flag_min - 1;
+                        flag_min = flag_min - 1000;
+                        let mut insert_vec = vec![0u64; 1000];
+                        insert_vec[(p - flag_min) as usize] = *v;
+                        map_book_vec_bids.insert((inst_id.clone(), flag_min, flag_max), insert_vec);
+                    }
+                    if flag_max != 0 && *p > flag_max {
+                        let interval = p - flag_max;
+                        if interval > 1000 {
+                            continue
+                        }
+                        flag_min = flag_max + 1;
+                        flag_max = flag_max + 1000;
+                        let mut insert_vec = vec![0u64; 1000];
+                        insert_vec[(p - flag_min) as usize] = *v;
+                        map_book_vec_bids.insert((inst_id.clone(), flag_min, flag_max), insert_vec);
+                    }
+                    keys = map_book_vec_bids.keys().cloned().collect::<Vec<(String, u64, u64)>>();
+                }
+                Some((i, m_p, mi_p)) => {
+                    if let Some(vec) = map_book_vec_bids.get_mut(&(i, m_p, mi_p)) {
+                        vec[(p - m_p) as usize] = *v;
+                    }
+                }
+            }
+        }
+    }
+
     pub async fn rx_order(mut rx:Receiver<String>, mut tx_ws: SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>){
         while let Some(b) = rx.recv().await {
             if let Err( e) = tx_ws.send(send_str(&b)).await{
@@ -271,9 +287,11 @@ async fn main() ->Result<(), Box<dyn error::Error>>{
 
                                             }
                                             CHANNEL_BBO_TBT=>{
-                                                // info!("ChannelBboTbt {}",text);
-                                                let bbo_tbt:ChannelBboTbt = from_str(&text).unwrap();
-                                                info!("ChannelBboTbt {:?}",bbo_tbt);
+                                                info!("ChannelBboTbt {}",text);
+                                                if book_channel_tx.send((text,args.inst_id.clone(),2)).await.is_err(){
+                                                    error!("book channel closed");
+                                                    break;
+                                                };
                                             }
                                             _ => {}
                                         }
