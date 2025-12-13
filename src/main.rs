@@ -273,7 +273,7 @@ async fn main() ->Result<(), Box<dyn error::Error>>{
                                             CHANNEL_BBO_TBT=>{
                                                 // info!("ChannelBboTbt {}",text);
                                                 let bbo_tbt:ChannelBboTbt = from_str(&text).unwrap();
-                                                info!("{:?}",bbo_tbt);
+                                                info!("ChannelBboTbt {:?}",bbo_tbt);
                                             }
                                             _ => {}
                                         }
