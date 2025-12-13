@@ -33,13 +33,13 @@ static BIDS: Lazy<DashMap<(String, u64, u64), Vec<u64>>> = Lazy::new(|| {
 pub struct TaskFn;
 impl TaskFn {
 
-    pub fn print_order() {
-
+    pub fn print_order(inst_id:&str) {
+        let sz = get_sz(inst_id).unwrap();
+        let min_sz = get_min_sz(inst_id).unwrap();
         let mut asks_key = ASKS.iter().map(|entry| { entry.key().clone() }).collect::<Vec<(String, u64, u64)>>();
         asks_key.sort_by(|(_, p1, _), (_, p2, _)| { p1.cmp(p2) });
         for (i,p1,p2) in asks_key {
-            let sz = get_sz(&i).unwrap();
-            let min_sz = get_min_sz(&i).unwrap();
+
             let ref_k_v = ASKS.get(&(i, p1, p2)).unwrap();
             let value = ref_k_v.value();
             for j in 0..value.len() {
@@ -59,9 +59,8 @@ impl TaskFn {
         let mut bids_key = BIDS.iter().map(|entry| { entry.key().clone() }).collect::<Vec<(String, u64, u64)>>();
         bids_key.sort_by(|(_, p1, _), (_, p2, _)| { p1.cmp(p2).reverse() });
         for (i,p1,p2) in bids_key {
-            let sz = get_sz(&i).unwrap();
-            let min_sz = get_min_sz(&i).unwrap();
             let ref_k_v = ASKS.get(&(i, p1, p2)).unwrap();
+
             let value = ref_k_v.value();
             for j in 0..value.len() {
                 if j>=100 {
@@ -344,7 +343,7 @@ async fn main() ->Result<(), Box<dyn error::Error>>{
                                                     error!("book channel closed");
                                                     break;
                                                 };
-                                                TaskFn::print_order();
+                                                TaskFn::print_order(inst_id);
                                             }
                                             _ => {}
                                         }
