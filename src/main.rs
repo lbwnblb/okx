@@ -19,7 +19,7 @@ use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
 use okx::common::config::{get_ws_private, get_ws_public};
 use okx::common::rest_api::instruments;
 use okx::common::utils::{get_inst_id_code, get_min_sz, get_sz, log_init, order_id_str, price_to_tick_int_str, send_str, tick_int_to_price_str};
-use okx::common::ws_api::{create_ws, login, order, order_market, subscribe, BookData, Books, Books5, OkxMessage, OrderType, Side, Ticker, TickerData, CHANNEL_BOOKS, CHANNEL_BOOKS5, CHANNEL_TICKERS};
+use okx::common::ws_api::{create_ws, login, order, order_market, subscribe, BookData, Books, Books5, OkxMessage, OrderType, Side, Ticker, TickerData, CHANNEL_BBO_TBT, CHANNEL_BOOKS, CHANNEL_BOOKS5, CHANNEL_TICKERS};
 
 static ORDER_COUNTER: AtomicU64 = AtomicU64::new(1);
 
@@ -183,75 +183,7 @@ impl TaskFn {
                             }
                         },
                         1 => {
-                            let books5 = from_str::<Books5>(&b).unwrap();
-                            for book_data in books5.data {
-                                let mut output = format!("========== BOOKS5: {} ==========\n", inst_id);
 
-                                // 处理 Asks
-                                output.push_str("Asks:\n");
-                                for (i, ask) in book_data.asks.iter().enumerate() {
-                                    if ask.len() >= 2 {
-                                        let price_str = &ask[0];
-                                        let size_str = &ask[1];
-                                        let price_tick = price_to_tick_int_str(price_str,sz);
-
-                                        // 查找价格对应的 orderbook 下标
-                                        let mut found = false;
-                                        for ((map_inst, min_p, max_p), vec) in &map_book_vec_asks {
-                                            if map_inst == &inst_id && price_tick >= *min_p && price_tick <= *max_p {
-                                                let idx = (price_tick - min_p) as usize;
-                                                let orderbook_size = vec[idx];
-                                                output.push_str(&format!(
-                                                    "  [{}] Price: {}, Size: {} -> OrderBook[{}-{}][idx:{}] = {}\n",
-                                                    i+1, price_str, size_str, min_p, max_p, idx, tick_int_to_price_str(orderbook_size,min_sz)
-                                                ));
-                                                found = true;
-                                                break;
-                                            }
-                                        }
-                                        if !found {
-                                            output.push_str(&format!(
-                                                "  [{}] Price: {}, Size: {} -> NOT FOUND in orderbook (tick: {})\n",
-                                                i+1, price_str, size_str, price_tick
-                                            ));
-                                        }
-                                    }
-                                }
-
-                                // 处理 Bids
-                                output.push_str("Bids:\n");
-                                for (i, bid) in book_data.bids.iter().enumerate() {
-                                    if bid.len() >= 2 {
-                                        let price_str = &bid[0];
-                                        let size_str = &bid[1];
-                                        let price_tick = price_to_tick_int_str(price_str,sz);
-
-                                        // 查找价格对应的 orderbook 下标
-                                        let mut found = false;
-                                        for ((map_inst, min_p, max_p), vec) in &map_book_vec_bids {
-                                            if map_inst == &inst_id && price_tick >= *min_p && price_tick <= *max_p {
-                                                let idx = (price_tick - min_p) as usize;
-                                                let orderbook_size = vec[idx];
-                                                output.push_str(&format!(
-                                                    "  [{}] Price: {}, Size: {} -> OrderBook[{}-{}][idx:{}] = {}\n",
-                                                    i+1, price_str, size_str, min_p, max_p, idx, tick_int_to_price_str(orderbook_size,min_sz)
-                                                ));
-                                                found = true;
-                                                break;
-                                            }
-                                        }
-                                        if !found {
-                                            output.push_str(&format!(
-                                                "  [{}] Price: {}, Size: {} -> NOT FOUND in orderbook (tick: {})\n",
-                                                i+1, price_str, size_str, price_tick
-                                            ));
-                                        }
-                                    }
-                                }
-
-                                output.push_str("======================================");
-                                info!("{}", output);
-                            }
                         },
                         _ => {}
                     }
@@ -295,8 +227,9 @@ async fn main() ->Result<(), Box<dyn error::Error>>{
     tx.send(send_str(subscribe(CHANNEL_BOOKS,inst_id ).as_str())).await?;
     tx.send(send_str(subscribe(CHANNEL_TICKERS,inst_id).as_str())).await?;
     tx.send(send_str(subscribe(CHANNEL_BOOKS5,inst_id).as_str())).await?;
+    tx.send(send_str(subscribe(CHANNEL_BBO_TBT,inst_id).as_str())).await?;
     let (book_channel_tx,book_channel_rx) = channel::<(Utf8Bytes,String,u8)>(512);
-    let (tx_order_channel,rx_order_channel) = channel::<(String)>(512);
+    let (tx_order_channel,rx_order_channel) = channel::<String>(512);
     spawn(TaskFn::rx_books(book_channel_rx));
     spawn(TaskFn::rx_order(rx_order_channel,tx_order_ws));
     spawn(TaskFn::rx_ws_order(rx_order_ws));
@@ -335,15 +268,10 @@ async fn main() ->Result<(), Box<dyn error::Error>>{
                                                 };
                                             }
                                             CHANNEL_TICKERS=>{
-                                                if !is_send_order {
-                                                    let ticker = from_str::<Ticker>(&text).unwrap();
-                                                    let order_id = ORDER_COUNTER.fetch_add(1, Ordering::Relaxed).to_string();
-                                                    let market_order = order_market(&order_id, Side::BUY,inst_id, "3000");
-                                                    info!("{}",market_order);
-                                                    tx_order_channel.send(market_order).await.unwrap();
-                                                    is_send_order = true;
-                                                // break;
-                                                }
+
+                                            }
+                                            CHANNEL_BBO_TBT=>{
+                                                info!("CHANNEL_BBO_TBT {}",text);
                                             }
                                             _ => {}
                                         }
