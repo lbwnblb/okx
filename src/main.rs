@@ -71,7 +71,7 @@ impl TaskFn {
                 if quantity != 0 {
                     let price_str = tick_int_to_price_str(price, sz);
                     let quantity_str = tick_int_to_price_str(quantity, min_sz);
-                    info!("asks 价格：{} 数量：{}", price_str, quantity_str)
+                    info!("bids 价格：{} 数量：{}", price_str, quantity_str)
                 }
                 // println!("{}", );
             }
