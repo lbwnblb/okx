@@ -155,7 +155,7 @@ impl TaskFn {
         let mut asks_p_v = asks.into_iter().map(|vec_str| as_bs_to_pv(vec_str, sz)).collect::<Vec<(u64, u64)>>();
         asks_p_v.sort_by(|a,b| a.1.cmp(&b.1));
         if asks_p_v.len() > 0 {
-            info!("bids 价格：{} 数量：{}", asks_p_v[0].0,asks_p_v[0].1);
+            info!("asks 价格：{} 数量：{}", asks_p_v[0].0,asks_p_v[0].1);
         }
         // let mut keys = ASKS.iter().map(|entry| entry.key().clone()).collect::<Vec<(String, u64, u64)>>();
 
