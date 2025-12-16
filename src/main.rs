@@ -78,7 +78,7 @@ impl TaskFn {
         }
     }
     pub async fn rx_books(mut rx: Receiver<(Utf8Bytes,String,u8)>){
-
+        let mut init_map = HashMap::<String,bool>::new();
         loop {
             match rx.recv().await {
                 Some((b,inst_id,task_id)) => {
@@ -114,6 +114,7 @@ impl TaskFn {
                                         BIDS.insert((inst_id.clone(),min_price.clone(),max_price.clone()),vec_price);
                                         break
                                     }
+                                    init_map.insert(inst_id,true);
                                 }
                                 "update" =>{
                                     for b_d in b.data.into_iter() {
@@ -130,13 +131,15 @@ impl TaskFn {
 
                         },
                         2 => {
-                            let bbo_tbt:ChannelBboTbt = from_str(&b).unwrap();
-                            let data = bbo_tbt.data;
-                            for bbb_tbt_data in data {
-                                let asks = bbb_tbt_data.asks;
-                                let bids = bbb_tbt_data.bids;
-                                Self::books_update(&inst_id, sz,asks,bids);
-                            }
+                            if init_map.get(&inst_id).is_some() {
+                                // let bbo_tbt:ChannelBboTbt = from_str(&b).unwrap();
+                                // let data = bbo_tbt.data;
+                                // for bbb_tbt_data in data {
+                                //     let asks = bbb_tbt_data.asks;
+                                //     let bids = bbb_tbt_data.bids;
+                                //     Self::books_update(&inst_id, sz,asks,bids);
+                                // }
+                            };
                         },
                         _ => {}
                     }
@@ -294,14 +297,14 @@ async fn main() ->Result<(), Box<dyn error::Error>>{
     tx.send(send_str(subscribe(CHANNEL_BOOKS,inst_id ).as_str())).await?;
     tx.send(send_str(subscribe(CHANNEL_TICKERS,inst_id).as_str())).await?;
     tx.send(send_str(subscribe(CHANNEL_BOOKS5,inst_id).as_str())).await?;
-    tx.send(send_str(subscribe(CHANNEL_BBO_TBT,inst_id).as_str())).await?;
+    // tx.send(send_str(subscribe(CHANNEL_BBO_TBT,inst_id).as_str())).await?;
     let (book_channel_tx,book_channel_rx) = channel::<(Utf8Bytes,String,u8)>(512);
     let (tx_order_channel,rx_order_channel) = channel::<String>(512);
     spawn(TaskFn::rx_books(book_channel_rx));
     spawn(TaskFn::rx_order(rx_order_channel,tx_order_ws));
     spawn(TaskFn::rx_ws_order(rx_order_ws));
 
-    let mut is_send_order = false;
+    // let mut is_send_order = false;
     loop {
         let result = rx.next().await;
         match result {
@@ -345,7 +348,6 @@ async fn main() ->Result<(), Box<dyn error::Error>>{
                                                     error!("book channel closed");
                                                     break;
                                                 };
-
                                             }
                                             _ => {}
                                         }
@@ -379,7 +381,7 @@ fn as_bs_to_pv(inst_id: &String, vec_str: Vec<String>,sz:&str) -> (u64, u64) {
 
 
 #[cfg(test)]
-mod test{
+mod test {
     use std::io::{BufRead, BufReader};
     use std::path::Path;
     use okx::common::utils::{get_quantity_sz, WS_FILE_PATH};
@@ -391,11 +393,15 @@ mod test{
 
         let file = File::open(path).unwrap();
         let reader = BufReader::new(file);
+        let (book_channel_tx, book_channel_rx) = channel::<(Utf8Bytes, String, u8)>(512);
+
+        spawn(TaskFn::rx_books(book_channel_rx));
+        let inst_id = "ETH-USDT-SWAP";
         for line in reader.lines() {
             let text = line.unwrap();  // 处理可能的 IO 错误
-            let okx_msg:OkxMessage = from_str(text.as_str()).unwrap();
+            let okx_msg: OkxMessage = from_str(text.as_str()).unwrap();
             let result = from_str::<OkxMessage>(&text);
-            if let Ok (result) = result{
+            if let Ok(result) = result {
                 if let Some(event) = result.event {
                     info!("event {}", event);
                     continue;
@@ -404,29 +410,27 @@ mod test{
                     match args.channel.as_str() {
                         CHANNEL_BOOKS => {
                             // let books = from_str::<Books>(&text).unwrap();
-                            if book_channel_tx.send((text,args.inst_id.clone(),0)).await.is_err() {
+                            if book_channel_tx.send((Utf8Bytes::from(text), args.inst_id.clone(), 0)).await.is_err() {
                                 error!("book channel closed");
                                 break;
                             }
                         }
-                        CHANNEL_BOOKS5=>{
-                            if book_channel_tx.send((text,args.inst_id.clone(),1)).await.is_err(){
+                        CHANNEL_BOOKS5 => {
+                            if book_channel_tx.send((Utf8Bytes::from(text), args.inst_id.clone(), 1)).await.is_err() {
                                 error!("book channel closed");
                                 break;
                             };
                         }
-                        CHANNEL_TICKERS=>{
+                        CHANNEL_TICKERS => {
                             let tickers = from_str::<Ticker>(&text).unwrap();
                             info!("{}",tickers.data.first().unwrap().last);
                             TaskFn::print_order(inst_id);
-
                         }
-                        CHANNEL_BBO_TBT=>{
-                            if book_channel_tx.send((text,args.inst_id.clone(),2)).await.is_err(){
+                        CHANNEL_BBO_TBT => {
+                            if book_channel_tx.send((Utf8Bytes::from(text), args.inst_id.clone(), 2)).await.is_err() {
                                 error!("book channel closed");
                                 break;
                             };
-
                         }
                         _ => {}
                     }
@@ -435,22 +439,21 @@ mod test{
         }
     }
     #[tokio::test]
-    async fn quantity_test(){
+    async fn quantity_test() {
         let inst_id = "BTC-USDT-SWAP";
-        println!("{}", get_quantity_sz(inst_id,"1.0"));
+        println!("{}", get_quantity_sz(inst_id, "1.0"));
     }
 
 
-
     #[tokio::test]
-    async fn order_test() -> Result<(), Box<dyn std::error::Error>>{
+    async fn order_test() -> Result<(), Box<dyn std::error::Error>> {
         log_init();
         let ws_order = create_ws(get_ws_private()).await?;
         let (mut tx, mut rx) = ws_order.split();
         let inst_id = "BTC-USDT-SWAP";
         let order_id = ORDER_COUNTER.fetch_add(1, Ordering::Relaxed).to_string();
 
-        let market_order = order_market(&order_id, Side::BUY,inst_id,&get_quantity_sz(inst_id,"1.0"));
+        let market_order = order_market(&order_id, Side::BUY, inst_id, &get_quantity_sz(inst_id, "1.0"));
         tx.send(send_str(login().as_str())).await?;
         let mut is_send_order = false;
         loop {
@@ -466,8 +469,6 @@ mod test{
                 _ => {}
             }
         }
-        Ok(())
     }
-
-
 }
+  
