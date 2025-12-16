@@ -378,7 +378,7 @@ fn as_bs_to_pv( vec_str: Vec<String>,sz:&str) -> (u64, u64) {
     let sz_str = vec_str.get(1).unwrap();
     let price = price_to_tick_int_str(price_str, sz);
     let sz = price_to_tick_int_str(sz_str, sz);
-    info!("原始价格{} 原始数量{} 转换后的价格{} 转换后的数量{}", price_str, sz_str, price,sz);
+    // info!("原始价格{} 原始数量{} 转换后的价格{} 转换后的数量{}", price_str, sz_str, price,sz);
     (price, sz)
 }
 
