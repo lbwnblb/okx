@@ -82,7 +82,6 @@ impl TaskFn {
         loop {
             match rx.recv().await {
                 Some((b,inst_id,task_id)) => {
-                    let min_sz = get_min_sz(&inst_id).unwrap();
                     let sz = get_sz(&inst_id).unwrap();
                     match task_id {
                         0 => {
@@ -92,7 +91,7 @@ impl TaskFn {
                                 "snapshot" => {
                                     for b_d in b.data.into_iter() {
                                         // 处理 asks
-                                        let vec_asks = b_d.asks.into_iter().map(|vec_str| as_bs_to_pv(&inst_id, vec_str,sz)).collect::<Vec<(u64, u64)>>();
+                                        let vec_asks = b_d.asks.into_iter().map(|vec_str| as_bs_to_pv( vec_str,sz)).collect::<Vec<(u64, u64)>>();
                                         let max_price = vec_asks.iter().map(|(price, _)| { price }).max().unwrap();
                                         let min_price = vec_asks.iter().map(|(price, _)| { price }).min().unwrap();
                                         let interval = max_price - min_price;
@@ -103,7 +102,7 @@ impl TaskFn {
                                         ASKS.insert((inst_id.clone(),min_price.clone(),max_price.clone()),vec_price);
 
                                         // 处理 bids
-                                        let vec_bids = b_d.bids.into_iter().map(|vec_str| as_bs_to_pv(&inst_id, vec_str,sz)).collect::<Vec<(u64, u64)>>();
+                                        let vec_bids = b_d.bids.into_iter().map(|vec_str| as_bs_to_pv( vec_str,sz)).collect::<Vec<(u64, u64)>>();
                                         let max_price = vec_bids.iter().map(|(price, _)| { price }).max().unwrap();
                                         let min_price = vec_bids.iter().map(|(price, _)| { price }).min().unwrap();
                                         let interval = max_price - min_price;
@@ -153,9 +152,9 @@ impl TaskFn {
     }
 
     fn books_update(inst_id: &String, sz: &String,asks: Vec<Vec<String>>, bids: Vec<Vec<String>>) {
-        let asks_p_v = asks.into_iter().map(|vec_str| as_bs_to_pv(&inst_id, vec_str, sz)).collect::<Vec<(u64, u64)>>();
+        let asks_p_v = asks.into_iter().map(|vec_str| as_bs_to_pv( vec_str, sz)).collect::<Vec<(u64, u64)>>();
         for (price,quantity) in asks_p_v {
-            info!("asks 价格：{} 数量：{}", price, quantity);
+            info!("asks 价格：{} 数量：{}", price,quantity);
         }
         // let mut keys = ASKS.iter().map(|entry| entry.key().clone()).collect::<Vec<(String, u64, u64)>>();
 
@@ -212,7 +211,7 @@ impl TaskFn {
         // }
 
         // 处理 bids 更新
-        let bids_p_v = bids.into_iter().map(|vec_str| as_bs_to_pv(&inst_id, vec_str, sz)).collect::<Vec<(u64, u64)>>();
+        let bids_p_v = bids.into_iter().map(|vec_str| as_bs_to_pv( vec_str, sz)).collect::<Vec<(u64, u64)>>();
         for (price,quantity) in bids_p_v {
             info!("bids 价格：{} 数量：{}", price, quantity);
         }
@@ -374,12 +373,12 @@ async fn main() ->Result<(), Box<dyn error::Error>>{
 }
 
 
-fn as_bs_to_pv(inst_id: &String, vec_str: Vec<String>,sz:&str) -> (u64, u64) {
+fn as_bs_to_pv( vec_str: Vec<String>,sz:&str) -> (u64, u64) {
     let price_str = vec_str.get(0).unwrap();
     let sz_str = vec_str.get(1).unwrap();
     let price = price_to_tick_int_str(price_str, sz);
     let sz = price_to_tick_int_str(sz_str, sz);
-    // info!("as_bs_to_pv: price_str={}, sz_str={} -> price={}, sz={}", price_str, sz_str, price, sz);
+    info!("原始价格{} 原始数量{} 转换后的价格{} 转换后的数量{}", price_str, sz_str, price,sz);
     (price, sz)
 }
 
