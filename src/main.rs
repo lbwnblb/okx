@@ -152,9 +152,10 @@ impl TaskFn {
     }
 
     fn books_update(inst_id: &String, sz: &String,asks: Vec<Vec<String>>, bids: Vec<Vec<String>>) {
-        let asks_p_v = asks.into_iter().map(|vec_str| as_bs_to_pv( vec_str, sz)).collect::<Vec<(u64, u64)>>();
-        for (price,quantity) in asks_p_v {
-            info!("asks 价格：{} 数量：{}", price,quantity);
+        let mut asks_p_v = asks.into_iter().map(|vec_str| as_bs_to_pv(vec_str, sz)).collect::<Vec<(u64, u64)>>();
+        asks_p_v.sort_by(|a,b| a.1.cmp(&b.1));
+        if asks_p_v.len() > 0 {
+            info!("bids 价格：{} 数量：{}", asks_p_v[0].0,asks_p_v[0].1);
         }
         // let mut keys = ASKS.iter().map(|entry| entry.key().clone()).collect::<Vec<(String, u64, u64)>>();
 
@@ -211,10 +212,12 @@ impl TaskFn {
         // }
 
         // 处理 bids 更新
-        let bids_p_v = bids.into_iter().map(|vec_str| as_bs_to_pv( vec_str, sz)).collect::<Vec<(u64, u64)>>();
-        for (price,quantity) in bids_p_v {
-            info!("bids 价格：{} 数量：{}", price, quantity);
+        let mut bids_p_v = bids.into_iter().map(|vec_str| as_bs_to_pv(vec_str, sz)).collect::<Vec<(u64, u64)>>();
+        bids_p_v.sort_by(|(a1,b1), (a2,b2)| a1.cmp(&a2).reverse());
+        if bids_p_v.len()>0 {
+            info!("bids 价格：{} 数量：{}", bids_p_v[0].0,bids_p_v[0].1);
         }
+
         // let mut keys = BIDS.iter().map(|entry| entry.key().clone()).collect::<Vec<(String, u64, u64)>>();
 
         // for (price, quantity) in bids_p_v.iter() {
