@@ -155,7 +155,7 @@ impl TaskFn {
         let mut asks_p_v = asks.into_iter().map(|vec_str| as_bs_to_pv(vec_str, sz)).collect::<Vec<(u64, u64)>>();
         asks_p_v.sort_by(|a,b| a.1.cmp(&b.1));
         if asks_p_v.len() > 0 {
-            info!("asks 价格：{} 数量：{}", asks_p_v[0].0,asks_p_v[0].1);
+            info!("asks 价格：{} 数量：{}", tick_int_to_price_str(asks_p_v[0].0,sz),tick_int_to_price_str(asks_p_v[0].1,get_min_sz(inst_id).unwrap()));
         }
         // let mut keys = ASKS.iter().map(|entry| entry.key().clone()).collect::<Vec<(String, u64, u64)>>();
 
@@ -215,7 +215,7 @@ impl TaskFn {
         let mut bids_p_v = bids.into_iter().map(|vec_str| as_bs_to_pv(vec_str, sz)).collect::<Vec<(u64, u64)>>();
         bids_p_v.sort_by(|(a1,b1), (a2,b2)| a1.cmp(&a2).reverse());
         if bids_p_v.len()>0 {
-            info!("bids 价格：{} 数量：{}", bids_p_v[0].0,bids_p_v[0].1);
+            info!("bids 价格：{} 数量：{}", tick_int_to_price_str(bids_p_v[0].0,sz),tick_int_to_price_str(bids_p_v[0].1,get_min_sz(inst_id).unwrap()));
         }
 
         // let mut keys = BIDS.iter().map(|entry| entry.key().clone()).collect::<Vec<(String, u64, u64)>>();
