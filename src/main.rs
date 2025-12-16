@@ -156,7 +156,7 @@ impl TaskFn {
         let asks_p_v = asks.into_iter().map(|vec_str| as_bs_to_pv(&inst_id, vec_str, sz)).collect::<Vec<(u64, u64)>>();
         let mut keys = ASKS.iter().map(|entry| entry.key().clone()).collect::<Vec<(String, u64, u64)>>();
 
-        for (p, v) in asks_p_v.iter() {
+        for (price, quantity) in asks_p_v.iter() {
             let mut key = None;
             let mut flag_min = 0u64;
             let mut flag_max = 0u64;
@@ -164,45 +164,45 @@ impl TaskFn {
                 if !inst_id.eq(inst_id_for) {
                     continue
                 }
-                if min_price <= p && p <= max_price {
+                if min_price <= price && price <= max_price {
                     key = Some((inst_id_for.clone(), min_price.clone(), max_price.clone()));
                 }
-                if min_price > p {
+                if min_price > price {
                     flag_min = min_price.clone();
                 }
-                if max_price < p {
+                if max_price < price {
                     flag_max = max_price.clone();
                 }
             }
             match key {
                 None => {
-                    if flag_min != 0 && *p < flag_min {
-                        let interval = flag_min - p;
+                    if flag_min != 0 && *price < flag_min {
+                        let interval = flag_min - price;
                         if interval > 1000 {
                             continue
                         }
                         flag_max = flag_min - 1;
                         flag_min = flag_min - 1000;
                         let mut insert_vec = vec![0u64; 1000];
-                        insert_vec[(p - flag_min) as usize] = *v;
+                        insert_vec[(price - flag_min) as usize] = *quantity;
                         ASKS.insert((inst_id.clone(), flag_min, flag_max), insert_vec);
                     }
-                    if flag_max != 0 && *p > flag_max {
-                        let interval = p - flag_max;
+                    if flag_max != 0 && *price > flag_max {
+                        let interval = price - flag_max;
                         if interval > 1000 {
                             continue
                         }
                         flag_min = flag_max + 1;
                         flag_max = flag_max + 1000;
                         let mut insert_vec = vec![0u64; 1000];
-                        insert_vec[(p - flag_min) as usize] = *v;
+                        insert_vec[(price - flag_min) as usize] = *quantity;
                         ASKS.insert((inst_id.clone(), flag_min, flag_max), insert_vec);
                     }
                     keys = ASKS.iter().map(|entry| entry.key().clone()).collect::<Vec<(String, u64, u64)>>();
                 }
-                Some((i, m_p, mi_p)) => {
-                    if let Some(mut vec) = ASKS.get_mut(&(i, m_p, mi_p)) {
-                        vec[(p - m_p) as usize] = *v;
+                Some((inst_id, min_price, max_price)) => {
+                    if let Some(mut vec) = ASKS.get_mut(&(inst_id, min_price, max_price)) {
+                        vec[(price - min_price) as usize] = *quantity;
                     }
                 }
             }
@@ -212,7 +212,7 @@ impl TaskFn {
         let bids_p_v = bids.into_iter().map(|vec_str| as_bs_to_pv(&inst_id, vec_str, sz)).collect::<Vec<(u64, u64)>>();
         let mut keys = BIDS.iter().map(|entry| entry.key().clone()).collect::<Vec<(String, u64, u64)>>();
 
-        for (p, v) in bids_p_v.iter() {
+        for (price, quantity) in bids_p_v.iter() {
             let mut key = None;
             let mut flag_min = 0u64;
             let mut flag_max = 0u64;
@@ -220,45 +220,45 @@ impl TaskFn {
                 if !inst_id.eq(inst_id_for) {
                     continue
                 }
-                if min_price <= p && p <= max_price {
+                if min_price <= price && price <= max_price {
                     key = Some((inst_id_for.clone(), min_price.clone(), max_price.clone()));
                 }
-                if min_price > p {
+                if min_price > price {
                     flag_min = min_price.clone();
                 }
-                if max_price < p {
+                if max_price < price {
                     flag_max = max_price.clone();
                 }
             }
             match key {
                 None => {
-                    if flag_min != 0 && *p < flag_min {
-                        let interval = flag_min - p;
+                    if flag_min != 0 && *price < flag_min {
+                        let interval = flag_min - price;
                         if interval > 1000 {
                             continue
                         }
                         flag_max = flag_min - 1;
                         flag_min = flag_min - 1000;
                         let mut insert_vec = vec![0u64; 1000];
-                        insert_vec[(p - flag_min) as usize] = *v;
+                        insert_vec[(price - flag_min) as usize] = *quantity;
                         BIDS.insert((inst_id.clone(), flag_min, flag_max), insert_vec);
                     }
-                    if flag_max != 0 && *p > flag_max {
-                        let interval = p - flag_max;
+                    if flag_max != 0 && *price > flag_max {
+                        let interval = price - flag_max;
                         if interval > 1000 {
                             continue
                         }
                         flag_min = flag_max + 1;
                         flag_max = flag_max + 1000;
                         let mut insert_vec = vec![0u64; 1000];
-                        insert_vec[(p - flag_min) as usize] = *v;
+                        insert_vec[(price - flag_min) as usize] = *quantity;
                         BIDS.insert((inst_id.clone(), flag_min, flag_max), insert_vec);
                     }
                     keys = BIDS.iter().map(|entry| entry.key().clone()).collect::<Vec<(String, u64, u64)>>();
                 }
-                Some((i, m_p, mi_p)) => {
-                    if let Some(mut vec) = BIDS.get_mut(&(i, m_p, mi_p)) {
-                        vec[(p - m_p) as usize] = *v;
+                Some((inst_id, min_price, max_price)) => {
+                    if let Some(mut vec) = BIDS.get_mut(&(inst_id, min_price, max_price)) {
+                        vec[(price - min_price) as usize] = *quantity;
                     }
                 }
             }
@@ -423,7 +423,7 @@ mod test {
                         }
                         CHANNEL_TICKERS => {
                             let tickers = from_str::<Ticker>(&text).unwrap();
-                            info!("{}",tickers.data.first().unwrap().last);
+                            info!("last price {}",tickers.data.first().unwrap().last);
                             TaskFn::print_order(inst_id);
                         }
                         CHANNEL_BBO_TBT => {
